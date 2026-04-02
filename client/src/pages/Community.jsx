@@ -1,0 +1,259 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart } from 'react-icons/fi';
+import Navbar from '../components/Navbar';
+import api from '../services/api';
+import { formatDistanceToNow } from 'date-fns';
+import { zhCN } from 'date-fns/locale';
+import { useAuthStore } from '../store/authStore';
+
+export default function Community() {
+  const { user } = useAuthStore();
+  const [posts, setPosts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    fetchPosts();
+    fetchCategories();
+  }, [activeCategory, sortBy]);
+
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (activeCategory) params.append('category', activeCategory);
+      if (sortBy) params.append('sort', sortBy);
+      if (searchQuery) params.append('search', searchQuery);
+      
+      const response = await api.get(`/posts?${params.toString()}`);
+      setPosts(response.data.posts);
+    } catch (error) {
+      console.error('获取文章失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      setCategories(response.data.categories);
+    } catch (error) {
+      console.error('获取分类失败:', error);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchPosts();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navbar />
+      
+      <div className="pt-20 pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">社区</h1>
+            <p className="text-gray-600">发现有趣的文章，参与讨论交流</p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="lg:w-3/4">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <form onSubmit={handleSearch} className="flex-1">
+                    <div className="relative">
+                      <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="搜索文章..."
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                      />
+                    </div>
+                  </form>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSortBy('newest')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
+                        sortBy === 'newest'
+                          ? 'bg-planet-purple text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <FiClock size={18} />
+                      <span>最新</span>
+                    </button>
+                    <button
+                      onClick={() => setSortBy('popular')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
+                        sortBy === 'popular'
+                          ? 'bg-planet-purple text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <FiTrendingUp size={18} />
+                      <span>热门</span>
+                    </button>
+                    <button
+                      onClick={() => setSortBy('most_liked')}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
+                        sortBy === 'most_liked'
+                          ? 'bg-planet-purple text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <FiHeart size={18} />
+                      <span>最多赞</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <button
+                    onClick={() => setActiveCategory('')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      activeCategory === ''
+                        ? 'bg-planet-purple text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    全部
+                  </button>
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setActiveCategory(category.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        activeCategory === category.id.toString()
+                          ? 'bg-planet-purple text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-planet-purple" />
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">📭</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">暂无文章</h3>
+                  <p className="text-gray-600">还没有发布任何文章</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <article
+                      key={post.id}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
+                    >
+                      <Link to={`/post/${post.id}`}>
+                        <div className="p-6">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <img
+                              src={post.author?.avatar || '/uploads/avatars/default.png'}
+                              alt={post.author?.nickname || post.author?.username}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                            <div>
+                              <div className="font-medium text-gray-900">
+                                {post.author?.nickname || post.author?.username}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: zhCN })}
+                              </div>
+                            </div>
+                            {post.category && (
+                              <span className="ml-auto px-3 py-1 bg-planet-purple/10 text-planet-purple text-sm rounded-full">
+                                {post.category.name}
+                              </span>
+                            )}
+                          </div>
+
+                          <h2 className="text-xl font-bold text-gray-900 mb-2 hover:text-planet-purple transition-colors">
+                            {post.title}
+                          </h2>
+                          
+                          <p className="text-gray-600 mb-4 line-clamp-2">
+                            {post.summary}
+                          </p>
+
+                          {post.cover_image && (
+                            <img
+                              src={post.cover_image}
+                              alt={post.title}
+                              className="w-full h-48 object-cover rounded-xl mb-4"
+                            />
+                          )}
+
+                          <div className="flex items-center space-x-6 text-sm text-gray-500">
+                            <span className="flex items-center space-x-1">
+                              <FiHeart size={16} />
+                              <span>{post.like_count}</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <span>💬</span>
+                              <span>{post.comment_count}</span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <span>👁</span>
+                              <span>{post.view_count}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="lg:w-1/4 space-y-6">
+              {!user ? (
+                <div className="bg-gradient-to-br from-planet-purple to-planet-pink rounded-2xl p-6 text-white">
+                  <h3 className="font-bold text-xl mb-2">加入社区</h3>
+                  <p className="text-white/80 text-sm mb-4">
+                    分享你的知识和经验，与志同道合的朋友交流
+                  </p>
+                  <Link
+                    to="/register"
+                    className="block w-full py-2 bg-white text-planet-purple text-center rounded-xl font-medium hover:shadow-lg transition-shadow"
+                  >
+                    立即注册
+                  </Link>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-planet-purple to-planet-pink rounded-2xl p-6 text-white">
+                  <h3 className="font-bold text-xl mb-2">发布文章</h3>
+                  <p className="text-white/80 text-sm mb-4">
+                    分享你的知识和经验，与社区成员交流
+                  </p>
+                  <Link
+                    to="/create-post"
+                    className="block w-full py-2 bg-white text-planet-purple text-center rounded-xl font-medium hover:shadow-lg transition-shadow"
+                  >
+                    立即发布
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
