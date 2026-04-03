@@ -1,8 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const authController = require('../controllers/authController');
 const { auth } = require('../middleware/auth');
+
+// 登录/注册请求限制（防止暴力破解）
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 5, // 每个IP最多5次尝试
+  message: { message: '登录尝试次数过多，请15分钟后再试' },
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const registerValidation = [
   body('username')
@@ -34,8 +45,8 @@ const loginValidation = [
     .withMessage('请输入密码')
 ];
 
-router.post('/register', registerValidation, authController.register);
-router.post('/login', loginValidation, authController.login);
+router.post('/register', authLimiter, registerValidation, authController.register);
+router.post('/login', authLimiter, loginValidation, authController.login);
 router.get('/me', auth, authController.getMe);
 router.put('/profile', auth, authController.updateProfile);
 router.put('/password', auth, authController.changePassword);

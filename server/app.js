@@ -26,15 +26,38 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { message: '请求过于频繁，请稍后再试' }
+// 全局请求限制
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 100, // 每个IP最多100个请求
+  message: { message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-app.use(helmet());
-// 未上线前暂时移除限制
-// app.use(limiter);
+// 登录/注册请求限制（更严格）
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 5, // 每个IP最多5次登录尝试
+  message: { message: '登录尝试次数过多，请15分钟后再试' },
+  skipSuccessfulRequests: true, // 成功的请求不计数
+});
+
+// 配置 Helmet 安全头
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// 应用全局限制
+app.use(globalLimiter);
 app.use(cors({
   origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL] : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   credentials: true
