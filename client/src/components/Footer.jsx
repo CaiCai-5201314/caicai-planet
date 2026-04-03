@@ -16,7 +16,8 @@ function Footer() {
       { name: 'GitHub', url: 'https://github.com', icon: 'github' },
       { name: '微博', url: 'https://weibo.com', icon: 'weibo' },
       { name: '微信', url: '#', icon: 'wechat' }
-    ]
+    ],
+    footerContact: '如有任何问题或建议，欢迎联系我们'
   });
 
   useEffect(() => {
@@ -31,7 +32,8 @@ function Footer() {
           footerCopyright: response.data.configs.footerCopyright || configs.footerCopyright,
           footerAbout: response.data.configs.footerAbout || configs.footerAbout,
           footerLinks: [],
-          footerSocial: []
+          footerSocial: [],
+          footerContact: response.data.configs.footerContact || configs.footerContact
         };
 
         // 解析导航链接
@@ -117,7 +119,7 @@ function Footer() {
           <div>
             <h4 className="font-bold mb-4">联系我们</h4>
             <p className="text-gray-400 text-sm">
-              如有任何问题或建议，欢迎联系我们
+              {configs.footerContact}
             </p>
           </div>
         </div>

@@ -17,6 +17,8 @@ const uploadRoutes = require('./routes/upload');
 const verificationRoutes = require('./routes/verification');
 const errorRoutes = require('./routes/error');
 const notificationRoutes = require('./routes/notifications');
+const errorTypeRoutes = require('./Question/routes/errorTypes');
+const userTaskRoutes = require('./routes/userTasks');
 const adminController = require('./controllers/adminController');
 
 const errorHandler = require('./middleware/errorHandler');
@@ -34,7 +36,7 @@ app.use(helmet());
 // 未上线前暂时移除限制
 // app.use(limiter);
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL] : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   credentials: true
 }));
 
@@ -51,30 +53,33 @@ app.use('/api/friend-links', friendLinkRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', errorTypeRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/error', errorRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/user-tasks', userTaskRoutes);
 app.get('/api/site-configs', adminController.getSiteConfigs);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 提供前端静态文件
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
-app.use(errorHandler);
-
 // API 404 处理
 app.use('/api', (req, res) => {
   res.status(404).json({ message: '接口不存在' });
 });
 
+// 提供前端静态文件
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
 // 所有其他路由返回前端页面（支持前端路由）
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
+
+// 错误处理中间件（必须放在所有路由的最后）
+app.use(errorHandler);
 
 const db = require('./models');
 
@@ -83,11 +88,46 @@ const startServer = async () => {
     await db.sequelize.authenticate();
     console.log('数据库连接成功');
 
-    await db.sequelize.sync({ alter: false });
+    // 暂时禁用alter同步，避免索引数量超过限制
+    await db.sequelize.sync({});
     console.log('数据库模型同步完成');
 
-    app.listen(PORT, () => {
-      console.log(`服务器运行在端口 ${PORT}`);
+
+    console.log('正在启动服务器...');
+    console.log(`尝试在端口 ${PORT} 上监听...`);
+    
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`服务器成功启动，运行在端口 ${PORT}`);
+      console.log(`服务器地址: http://localhost:${PORT}`);
+      console.log(`服务器地址: http://127.0.0.1:${PORT}`);
+      
+      // 测试服务器是否正常响应
+      const http = require('http');
+      const options = {
+        hostname: '127.0.0.1',
+        port: PORT,
+        path: '/api/health',
+        method: 'GET'
+      };
+      
+      const req = http.request(options, (res) => {
+        console.log(`\n服务器自检响应状态码: ${res.statusCode}`);
+        res.on('data', (d) => {
+          console.log('服务器自检响应数据:');
+          process.stdout.write(d);
+        });
+      });
+      
+      req.on('error', (e) => {
+        console.error(`\n服务器自检失败: ${e.message}`);
+      });
+      
+      req.end();
+    });
+
+    server.on('error', (error) => {
+      console.error('服务器启动错误:', error);
+      process.exit(1);
     });
   } catch (error) {
     console.error('启动服务器失败:', error);

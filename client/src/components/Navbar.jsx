@@ -4,11 +4,16 @@ import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiBell } from 'react-icons/f
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../utils/cn';
 
-const navItems = [
+const baseNavItems = [
   { label: '首页', path: '/' },
   { label: '社区', path: '/community' },
   { label: '友链', path: '/friends' },
   { label: '关于', path: '/about' },
+  { label: '隐秘星球', path: '/secret' },
+];
+
+const authNavItems = [
+  { label: '月球', path: '/tasks' },
 ];
 
 export default function Navbar() {
@@ -58,13 +63,13 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => (
+            {[...baseNavItems, ...(isAuthenticated ? authNavItems : [])].map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
                   'font-medium transition-colors relative',
-                  isScrolled || location.pathname !== '/'
+                  isScrolled || location.pathname !== '/' 
                     ? location.pathname === item.path
                       ? 'text-planet-purple'
                       : 'text-gray-600 hover:text-planet-purple'
@@ -78,7 +83,7 @@ export default function Navbar() {
                   <span
                     className={cn(
                       'absolute -bottom-1 left-0 w-full h-0.5 rounded-full',
-                      isScrolled || location.pathname !== '/'
+                      isScrolled || location.pathname !== '/' 
                         ? 'bg-planet-purple'
                         : 'bg-white'
                     )}
@@ -96,9 +101,12 @@ export default function Navbar() {
                   className="flex items-center space-x-2 focus:outline-none"
                 >
                   <img
-                    src={`${user?.avatar || '/uploads/avatars/default.png'}?t=${Date.now()}`}
+                    src={user?.avatar && user.avatar.length > 0 ? user.avatar : 'https://via.placeholder.com/150'}
                     alt={user?.nickname || user?.username}
                     className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-md"
+                    onError={(e) => {
+                      e.target.src = 'https://via.placeholder.com/150';
+                    }}
                   />
                   <span
                     className={cn(
@@ -199,7 +207,7 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100">
           <div className="px-4 py-3 space-y-2">
-            {navItems.map((item) => (
+            {[...baseNavItems, ...(isAuthenticated ? authNavItems : [])].map((item) => (
               <Link
                 key={item.path}
                 to={item.path}

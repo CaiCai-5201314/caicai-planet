@@ -39,5 +39,10 @@ router.post('/login', loginValidation, authController.login);
 router.get('/me', auth, authController.getMe);
 router.put('/profile', auth, authController.updateProfile);
 router.put('/password', auth, authController.changePassword);
+router.put('/update-username', auth, authController.updateUsername);
+router.put('/update-email', auth, authController.updateEmail);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/verify-code', authController.verifyCode);
+router.post('/reset-password', authController.resetPassword);
 
 module.exports = router;

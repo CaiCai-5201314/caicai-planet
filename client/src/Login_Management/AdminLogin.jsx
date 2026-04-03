@@ -21,10 +21,14 @@ export default function AdminLogin() {
 
     try {
       // 先调用普通登录
+      console.log('发送登录请求:', formData);
+      console.log('API基础URL:', api.defaults.baseURL);
       const response = await api.post('/auth/login', {
         username: formData.username,
         password: formData.password
       });
+      console.log('登录响应:', response);
+      console.log('响应数据:', response.data);
 
       const { token, user } = response.data;
 
@@ -44,6 +48,8 @@ export default function AdminLogin() {
       toast.success('管理员登录成功！');
       navigate('/admin');
     } catch (error) {
+      console.error('登录错误:', error);
+      console.error('错误响应:', error.response);
       toast.error(error.response?.data?.message || '登录失败');
     } finally {
       setIsLoading(false);

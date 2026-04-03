@@ -1,4 +1,4 @@
-const { User, Post, Comment, FriendLink, SiteConfig, BannedWord, Sequelize } = require('../models');
+const { User, Post, Comment, Task, UserTask, FriendLink, SiteConfig, BannedWord, Sequelize } = require('../models');
 const { Op } = Sequelize;
 const { createNotification } = require('./notificationController');
 const { hashPassword } = require('../utils/password');
@@ -115,11 +115,11 @@ const adminController = {
     }
   },
 
-  // 更新用户信息（昵称、密码）
+  // 更新用户信息（昵称、邮箱、密码）
   updateUser: async (req, res) => {
     try {
       const { id } = req.params;
-      const { nickname, password } = req.body;
+      const { nickname, email, password } = req.body;
 
       const user = await User.findByPk(id);
       if (!user) {
@@ -128,6 +128,7 @@ const adminController = {
 
       const updateData = {};
       if (nickname !== undefined) updateData.nickname = nickname;
+      if (email !== undefined) updateData.email = email;
       if (password) {
         updateData.password = await hashPassword(password);
       }
@@ -140,6 +141,7 @@ const adminController = {
           id: user.id,
           username: user.username,
           nickname: user.nickname,
+          email: user.email,
           avatar: user.avatar
         }
       });
@@ -617,8 +619,10 @@ const adminController = {
   // 获取评论列表（管理员）
   getComments: async (req, res) => {
     try {
-      const { page = 1, limit = 20, status, search } = req.query;
+      const { page = 1, limit = 20, status, search, type } = req.query;
       const offset = (page - 1) * limit;
+
+      console.log('获取评论列表 - type:', type);
 
       const where = {};
       if (status) {
@@ -629,46 +633,70 @@ const adminController = {
           [Op.like]: `%${search}%`
         };
       }
+      
+      // 根据类型筛选：post-社区评论，task-任务评论
+      if (type === 'post') {
+        // 社区评论：有post_id
+        where.post_id = { [Op.ne]: null };
+      } else if (type === 'task') {
+        // 任务评论：有task_id
+        where.task_id = { [Op.ne]: null };
+      }
+
+      console.log('查询条件 where:', JSON.stringify(where, null, 2));
+
+      const includeOptions = [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'nickname', 'avatar']
+        },
+        {
+          model: Comment,
+          as: 'parent',
+          attributes: ['id', 'content'],
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'username', 'nickname']
+            }
+          ]
+        },
+        {
+          model: Comment,
+          as: 'replies',
+          where: { status: 'active' },
+          required: false,
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['id', 'username', 'nickname', 'avatar']
+            }
+          ]
+        }
+      ];
+
+      // 根据类型添加关联
+      if (type === 'task' || !type) {
+        includeOptions.push({
+          model: Task,
+          as: 'task',
+          attributes: ['id', 'title']
+        });
+      }
+      if (type === 'post' || !type) {
+        includeOptions.push({
+          model: Post,
+          as: 'post',
+          attributes: ['id', 'title']
+        });
+      }
 
       const { count, rows: comments } = await Comment.findAndCountAll({
         where,
-        include: [
-          {
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username', 'nickname', 'avatar']
-          },
-          {
-            model: Post,
-            as: 'post',
-            attributes: ['id', 'title']
-          },
-          {
-            model: Comment,
-            as: 'parent',
-            attributes: ['id', 'content'],
-            include: [
-              {
-                model: User,
-                as: 'user',
-                attributes: ['id', 'username', 'nickname']
-              }
-            ]
-          },
-          {
-            model: Comment,
-            as: 'replies',
-            where: { status: 'active' },
-            required: false,
-            include: [
-              {
-                model: User,
-                as: 'user',
-                attributes: ['id', 'username', 'nickname', 'avatar']
-              }
-            ]
-          }
-        ],
+        include: includeOptions,
         order: [['created_at', 'DESC']],
         limit: parseInt(limit),
         offset: parseInt(offset)
@@ -804,6 +832,133 @@ const adminController = {
     } catch (error) {
       console.error('更新文章状态错误:', error);
       res.status(500).json({ message: '更新文章状态失败' });
+    }
+  },
+
+  // 获取用户任务列表
+  getUserTasks: async (req, res) => {
+    try {
+      const { page = 1, limit = 20, status, userId, taskId } = req.query;
+      const offset = (page - 1) * limit;
+
+      const where = {};
+      if (status) {
+        where.status = status;
+      }
+      if (userId) {
+        where.user_id = userId;
+      }
+      if (taskId) {
+        where.task_id = taskId;
+      }
+
+      const { count, rows: userTasks } = await UserTask.findAndCountAll({
+        where,
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['id', 'username', 'nickname', 'avatar', 'email']
+          },
+          {
+            model: Task,
+            as: 'task',
+            include: [
+              {
+                model: User,
+                as: 'creator',
+                attributes: ['id', 'username', 'nickname']
+              }
+            ]
+          }
+        ],
+        order: [['created_at', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      res.json({
+        userTasks,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
+      });
+    } catch (error) {
+      console.error('获取用户任务列表错误:', error);
+      res.status(500).json({ message: '获取用户任务列表失败' });
+    }
+  },
+
+  // 更新用户任务状态
+  updateUserTaskStatus: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      const userTask = await UserTask.findByPk(id, {
+        include: [
+          { model: User, as: 'user', attributes: ['id', 'username', 'nickname'] },
+          { model: Task, as: 'task', attributes: ['id', 'title'] }
+        ]
+      });
+
+      if (!userTask) {
+        return res.status(404).json({ message: '用户任务记录不存在' });
+      }
+
+      const oldStatus = userTask.status;
+      const updateData = { status };
+
+      if (status === 'completed' && oldStatus !== 'completed') {
+        updateData.completedAt = new Date();
+        // 给用户增加积分
+        if (userTask.task && userTask.task.reward > 0) {
+          await User.increment('points', {
+            by: userTask.task.reward,
+            where: { id: userTask.user_id }
+          });
+        }
+      }
+
+      await userTask.update(updateData);
+
+      res.json({
+        message: '任务状态更新成功',
+        userTask: {
+          id: userTask.id,
+          status: userTask.status,
+          user: userTask.user,
+          task: userTask.task
+        }
+      });
+    } catch (error) {
+      console.error('更新用户任务状态错误:', error);
+      res.status(500).json({ message: '更新任务状态失败' });
+    }
+  },
+
+  // 删除用户任务记录
+  deleteUserTask: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const userTask = await UserTask.findByPk(id);
+      if (!userTask) {
+        return res.status(404).json({ message: '用户任务记录不存在' });
+      }
+
+      await userTask.destroy();
+
+      // 减少任务参与人数
+      await Task.decrement('currentParticipants', { where: { id: userTask.task_id } });
+
+      res.json({ message: '用户任务记录删除成功' });
+    } catch (error) {
+      console.error('删除用户任务错误:', error);
+      res.status(500).json({ message: '删除用户任务失败' });
     }
   }
 };

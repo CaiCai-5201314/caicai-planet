@@ -48,6 +48,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(255),
       allowNull: true
     },
+    cover_style: {
+      type: DataTypes.ENUM('cover', 'contain', 'stretch', 'center'),
+      allowNull: true,
+      defaultValue: 'cover'
+    },
     level: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -88,6 +93,10 @@ module.exports = (sequelize, DataTypes) => {
       comment: '是否禁止发布'
     },
     last_login: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    last_username_change: {
       type: DataTypes.DATE,
       allowNull: true
     }

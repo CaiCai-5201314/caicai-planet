@@ -181,6 +181,48 @@ const userController = {
       console.error('上传封面错误:', error);
       res.status(500).json({ message: '上传封面失败' });
     }
+  },
+
+  getUserLikes: async (req, res) => {
+    try {
+      const { page = 1, limit = 10 } = req.query;
+      const offset = (page - 1) * limit;
+
+      const { count, rows: likes } = await Like.findAndCountAll({
+        where: { user_id: req.user.id },
+        include: [
+          {
+            model: Post,
+            as: 'post',
+            where: { status: 'published' },
+            required: true,
+            include: [
+              {
+                model: User,
+                as: 'author',
+                attributes: ['id', 'username', 'nickname', 'avatar']
+              }
+            ]
+          }
+        ],
+        order: [['created_at', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+
+      res.json({
+        likes: likes.map(l => l.post),
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
+      });
+    } catch (error) {
+      console.error('获取用户点赞错误:', error);
+      res.status(500).json({ message: '获取用户点赞失败' });
+    }
   }
 };
 

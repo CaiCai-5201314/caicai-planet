@@ -47,11 +47,7 @@ export default function CreatePost() {
         formData.append('cover_image', coverImage);
       }
 
-      const response = await api.post('/posts', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await api.post('/posts', formData);
 
       toast.success('文章发布成功');
       navigate(`/post/${response.data.post.id}`);

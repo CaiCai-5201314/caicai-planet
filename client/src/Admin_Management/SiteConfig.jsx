@@ -18,7 +18,8 @@ function SiteConfig() {
       { name: 'GitHub', url: 'https://github.com', icon: 'github' },
       { name: '微博', url: 'https://weibo.com', icon: 'weibo' },
       { name: '微信', url: '#', icon: 'wechat' }
-    ]
+    ],
+    footerContact: '如有任何问题或建议，欢迎联系我们'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,7 +46,8 @@ function SiteConfig() {
             : configs.footerLinks,
           footerSocial: response.data.configs.footerSocial 
             ? JSON.parse(response.data.configs.footerSocial) 
-            : configs.footerSocial
+            : configs.footerSocial,
+          footerContact: response.data.configs.footerContact || configs.footerContact
         };
         setConfigs(loadedConfigs);
       }
@@ -66,7 +68,8 @@ function SiteConfig() {
         { key: 'footerCopyright', value: configs.footerCopyright, description: '页尾版权信息' },
         { key: 'footerAbout', value: configs.footerAbout, description: '页尾关于信息' },
         { key: 'footerLinks', value: JSON.stringify(configs.footerLinks), description: '页尾导航链接' },
-        { key: 'footerSocial', value: JSON.stringify(configs.footerSocial), description: '页尾社交链接' }
+        { key: 'footerSocial', value: JSON.stringify(configs.footerSocial), description: '页尾社交链接' },
+        { key: 'footerContact', value: configs.footerContact, description: '页尾联系我们信息' }
       ];
 
       // 发送保存请求
@@ -293,6 +296,20 @@ function SiteConfig() {
             </div>
           </div>
 
+          {/* 联系我们 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              联系我们
+            </label>
+            <textarea
+              value={configs.footerContact}
+              onChange={(e) => handleInputChange('footerContact', e.target.value)}
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+              placeholder="请输入联系我们信息"
+            />
+          </div>
+
           {/* 保存按钮 */}
           <div className="flex justify-end">
             <button
@@ -347,6 +364,10 @@ function SiteConfig() {
                     </a>
                   ))}
                 </div>
+              )}
+              
+              {configs.footerContact && (
+                <p className="text-gray-600 mb-4">{configs.footerContact}</p>
               )}
               
               {configs.footerCopyright && (

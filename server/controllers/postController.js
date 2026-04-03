@@ -129,6 +129,10 @@ const postController = {
     try {
       const { title, content, summary } = req.body;
 
+      if (!title || !content) {
+        return res.status(400).json({ message: '请提供标题和内容' });
+      }
+
       const slug = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
 
       let cover_image = null;
@@ -142,7 +146,7 @@ const postController = {
         summary: summary || content.substring(0, 200),
         cover_image,
         author_id: req.user.id,
-        status: 'pending',
+        status: 'published',
         slug: `${slug}-${Date.now()}`
       });
 
@@ -200,8 +204,9 @@ const postController = {
   deletePost: async (req, res) => {
     try {
       const { id } = req.params;
+      const postId = parseInt(id, 10);
 
-      const post = await Post.findByPk(id);
+      const post = await Post.findByPk(postId);
 
       if (!post) {
         return res.status(404).json({ message: '文章不存在' });
@@ -211,12 +216,24 @@ const postController = {
         return res.status(403).json({ message: '无权删除此文章' });
       }
 
+      // 先删除关联数据
+      await Comment.destroy({ where: { post_id: postId } });
+      await Like.destroy({ where: { post_id: postId } });
+      await Favorite.destroy({ where: { post_id: postId } });
+      
+      // 删除文章标签关联
+      const { sequelize } = require('../models');
+      await sequelize.query('DELETE FROM post_tags WHERE post_id = ?', {
+        replacements: [postId],
+        type: sequelize.QueryTypes.DELETE
+      });
+
       await post.destroy();
 
       res.json({ message: '文章删除成功' });
     } catch (error) {
       console.error('删除文章错误:', error);
-      res.status(500).json({ message: '删除文章失败' });
+      res.status(500).json({ message: '删除文章失败', error: error.message });
     }
   },
 

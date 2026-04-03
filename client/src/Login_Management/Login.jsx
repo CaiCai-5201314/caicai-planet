@@ -136,27 +136,7 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="mt-8">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">其他登录方式</span>
-                </div>
-              </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <button className="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                  <span className="text-lg mr-2">📧</span>
-                  <span className="text-sm text-gray-600">邮箱</span>
-                </button>
-                <button className="flex items-center justify-center px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                  <span className="text-lg mr-2">💬</span>
-                  <span className="text-sm text-gray-600">微信</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

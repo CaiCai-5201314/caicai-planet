@@ -1,13 +1,33 @@
+require('dotenv').config();
 const nodemailer = require('nodemailer');
 
-// 创建邮件发送器 (网易163配置)
-const transporter = nodemailer.createTransport({
+// 调试：打印邮件配置
+console.log('邮件配置加载:');
+console.log('163邮箱:', process.env.EMAIL_USER);
+console.log('QQ邮箱:', process.env.EMAIL_QQ_USER);
+
+// 创建163邮件发送器
+const transporter163 = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.163.com',
-  port: process.env.EMAIL_PORT || 465,
-  secure: true, // 使用SSL
+  port: parseInt(process.env.EMAIL_PORT) || 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || '' // 网易邮箱使用授权码
+    pass: process.env.EMAIL_PASS || ''
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
+
+// 创建QQ邮件发送器
+const transporterQQ = nodemailer.createTransport({
+  host: process.env.EMAIL_QQ_HOST || 'smtp.qq.com',
+  port: parseInt(process.env.EMAIL_QQ_PORT) || 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_QQ_USER || '',
+    pass: process.env.EMAIL_QQ_PASS || ''
   },
   tls: {
     rejectUnauthorized: false
@@ -15,18 +35,28 @@ const transporter = nodemailer.createTransport({
 });
 
 // 验证邮件配置
-transporter.verify((error, success) => {
+transporter163.verify((error, success) => {
   if (error) {
-    console.error('邮件服务配置错误:', error);
+    console.error('163邮件服务配置错误:', error);
   } else {
-    console.log('邮件服务配置成功，可以发送邮件');
+    console.log('163邮件服务配置成功');
   }
 });
 
-// 发送验证码邮件
+transporterQQ.verify((error, success) => {
+  if (error) {
+    console.error('QQ邮件服务配置错误:', error);
+  } else {
+    console.log('QQ邮件服务配置成功');
+  }
+});
+
+// 发送验证码邮件 (使用QQ邮箱)
 const sendVerificationCode = async (email, code) => {
+  console.log(`正在发送验证码邮件到: ${email}`);
+
   const mailOptions = {
-    from: `"菜菜星球" <${process.env.EMAIL_USER || 'caicaifensi520@163.com'}>`,
+    from: `"菜菜星球" <${process.env.EMAIL_QQ_USER || 'caicaijiejie520@qq.com'}>`,
     to: email,
     subject: '菜菜星球 - 邮箱验证码',
     html: `
@@ -37,7 +67,7 @@ const sendVerificationCode = async (email, code) => {
         </div>
         <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
           <p style="color: #333; font-size: 16px;">您好！</p>
-          <p style="color: #666; font-size: 14px; line-height: 1.6;">感谢您注册菜菜星球。您的验证码是：</p>
+          <p style="color: #666; font-size: 14px; line-height: 1.6;">您正在找回密码。您的验证码是：</p>
           <div style="background: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
             <span style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px;">${code}</span>
           </div>
@@ -48,10 +78,18 @@ const sendVerificationCode = async (email, code) => {
     `
   };
 
-  return transporter.sendMail(mailOptions);
+  try {
+    const result = await transporterQQ.sendMail(mailOptions);
+    console.log('QQ邮件发送成功:', result.messageId);
+    return result;
+  } catch (error) {
+    console.error('QQ邮件发送失败:', error);
+    throw error;
+  }
 };
 
 module.exports = {
   sendVerificationCode,
-  transporter
+  transporter163,
+  transporterQQ
 };

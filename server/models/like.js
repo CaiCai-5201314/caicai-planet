@@ -15,11 +15,21 @@ module.exports = (sequelize, DataTypes) => {
     },
     post_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
       references: {
         model: 'posts',
         key: 'id'
-      }
+      },
+      comment: '文章ID，与task_id互斥'
+    },
+    task_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'tasks',
+        key: 'id'
+      },
+      comment: '任务ID，与post_id互斥'
     }
   }, {
     tableName: 'likes',
@@ -29,7 +39,23 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       {
         unique: true,
-        fields: ['user_id', 'post_id']
+        fields: ['user_id', 'post_id'],
+        name: 'unique_user_post_like',
+        where: {
+          post_id: {
+            [sequelize.Sequelize.Op.ne]: null
+          }
+        }
+      },
+      {
+        unique: true,
+        fields: ['user_id', 'task_id'],
+        name: 'unique_user_task_like',
+        where: {
+          task_id: {
+            [sequelize.Sequelize.Op.ne]: null
+          }
+        }
       }
     ]
   });
@@ -37,6 +63,7 @@ module.exports = (sequelize, DataTypes) => {
   Like.associate = (models) => {
     Like.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
     Like.belongsTo(models.Post, { foreignKey: 'post_id', as: 'post' });
+    Like.belongsTo(models.Task, { foreignKey: 'task_id', as: 'task' });
   };
 
   return Like;

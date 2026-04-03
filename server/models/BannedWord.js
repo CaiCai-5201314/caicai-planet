@@ -12,6 +12,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       unique: true
     },
+    category: {
+      type: DataTypes.ENUM('political', 'obscene', 'advertisement', 'violence', 'discrimination', 'other'),
+      allowNull: false,
+      defaultValue: 'other'
+    },
     level: {
       type: DataTypes.ENUM('light', 'medium', 'high', 'severe'),
       allowNull: false,
@@ -29,7 +34,15 @@ module.exports = (sequelize) => {
     }
   }, {
     tableName: 'banned_words',
-    timestamps: true
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['category']
+      },
+      {
+        fields: ['level']
+      }
+    ]
   });
 
   return BannedWord;

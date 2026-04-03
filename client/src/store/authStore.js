@@ -81,6 +81,15 @@ export const useAuthStore = create(
         }
       },
 
+      updateCover: (cover_image) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          // 创建全新的用户对象，确保重新渲染
+          const newUser = { ...currentUser, cover_image };
+          set({ user: newUser });
+        }
+      },
+
       setAdminUser: (userData) => {
         set({ user: userData, isAuthenticated: true });
       }

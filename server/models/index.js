@@ -14,6 +14,7 @@ if (config.use_env_variable) {
   sequelize = new Sequelize(config.database, config.username, config.password, config);
 }
 
+// 导入models目录中的模型
 fs
   .readdirSync(__dirname)
   .filter(file => {
@@ -28,6 +29,24 @@ fs
     const model = require(path.join(__dirname, file))(sequelize, Sequelize.DataTypes);
     db[model.name] = model;
   });
+
+// 导入Question/models目录中的模型
+const questionModelsPath = path.join(__dirname, '../Question/models');
+if (fs.existsSync(questionModelsPath)) {
+  fs
+    .readdirSync(questionModelsPath)
+    .filter(file => {
+      return (
+        file.indexOf('.') !== 0 &&
+        file.slice(-3) === '.js' &&
+        file.indexOf('.test.js') === -1
+      );
+    })
+    .forEach(file => {
+      const model = require(path.join(questionModelsPath, file))(sequelize, Sequelize.DataTypes);
+      db[model.name] = model;
+    });
+}
 
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {

@@ -4,7 +4,7 @@ const { BannedWord } = require('../models');
 const bannedWordCheck = async (req, res, next) => {
   try {
     // 获取需要检测的文本
-    const { content, title, summary } = req.body;
+    const { content, title, summary } = req.body || {};
     const textToCheck = `${title || ''} ${summary || ''} ${content || ''}`;
 
     if (!textToCheck.trim()) {
