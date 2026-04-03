@@ -42,11 +42,11 @@ caicai-planet/
 
 ## 数据库配置
 
-- 数据库连接名: caicaitask520
+- 数据库连接名: xxxxxx
 - 主机: localhost
 - 端口: 3306
-- 用户名: root
-- 密码: 123456
+- 用户名: xxxx
+- 密码: xxxx
 
 ## 快速开始
 
