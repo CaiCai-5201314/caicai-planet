@@ -28,8 +28,8 @@ const PORT = process.env.PORT || 3002;
 
 // 全局请求限制
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每个IP最多100个请求
+  windowMs: 60 * 1000, // 15分钟
+  max: 10000, // 每个IP最多100个请求
   message: { message: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -37,24 +37,25 @@ const globalLimiter = rateLimit({
 
 // 登录/注册请求限制（更严格）
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
+  windowMs: 60 * 1000, // 15分钟
   max: 5, // 每个IP最多5次登录尝试
   message: { message: '登录尝试次数过多，请15分钟后再试' },
   skipSuccessfulRequests: true, // 成功的请求不计数
 });
 
 // 配置 Helmet 安全头
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-    },
-  },
-  crossOriginEmbedderPolicy: false,
-}));
+//app.use(helmet({
+//  contentSecurityPolicy: {
+//    directives: {
+//      defaultSrc: ["'self'"],
+//      styleSrc: ["'self'", "'unsafe-inline'"],
+//      scriptSrc: ["'self'"],
+//      imgSrc: ["'self'", "data:", "blob:"],
+//    },
+//  },
+//  crossOriginEmbedderPolicy: false,
+//  hstS:false,
+//}));
 
 // 应用全局限制
 app.use(globalLimiter);
@@ -94,11 +95,11 @@ app.use('/api', (req, res) => {
 });
 
 // 提供前端静态文件
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static('/opt/caicai-planet/client/dist'));
 
 // 所有其他路由返回前端页面（支持前端路由）
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  res.sendFile('/opt/caicai-planet/client/dist/index.html');
 });
 
 // 错误处理中间件（必须放在所有路由的最后）
