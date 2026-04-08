@@ -71,7 +71,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     role: {
-      type: DataTypes.ENUM('user', 'admin'),
+      type: DataTypes.ENUM('user', 'admin', 'sub_admin'),
       allowNull: false,
       defaultValue: 'user'
     },
@@ -79,6 +79,20 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('active', 'inactive', 'banned'),
       allowNull: false,
       defaultValue: 'active'
+    },
+    is_sub_account: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    parent_account_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    permissions: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: {}
     },
     is_muted: {
       type: DataTypes.BOOLEAN,

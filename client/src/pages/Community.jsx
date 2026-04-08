@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart } from 'react-icons/fi';
+import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart, FiStar } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -159,11 +159,19 @@ export default function Community() {
                   {posts.map((post) => (
                     <article
                       key={post.id}
-                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
+                      className={`bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-lg transition-shadow ${
+                        post.is_pinned ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-gray-100'
+                      }`}
                     >
                       <Link to={`/post/${post.id}`}>
                         <div className="p-6">
                           <div className="flex items-center space-x-3 mb-4">
+                            {post.is_pinned && (
+                              <div className="flex items-center space-x-1 px-2 py-1 bg-yellow-400/20 text-yellow-700 rounded-lg text-sm">
+                                <FiStar size={14} className="fill-yellow-500" />
+                                <span>置顶</span>
+                              </div>
+                            )}
                             <img
                               src={post.author?.avatar || '/uploads/avatars/default.png'}
                               alt={post.author?.nickname || post.author?.username}
@@ -184,7 +192,7 @@ export default function Community() {
                             )}
                           </div>
 
-                          <h2 className="text-xl font-bold text-gray-900 mb-2 hover:text-planet-purple transition-colors">
+                          <h2 className="text-xl font-bold text-gray-900 mb-2 hover:text-planet-purple transition-colors flex items-center gap-2">
                             {post.title}
                           </h2>
                           
@@ -254,6 +262,20 @@ export default function Community() {
           </div>
         </div>
       </div>
+
+      {/* 手机端固定发布按钮 */}
+      {user && (
+        <div className="fixed bottom-8 right-8 lg:hidden">
+          <Link
+            to="/create-post"
+            className="flex items-center justify-center w-16 h-16 bg-planet-purple text-white rounded-full shadow-lg hover:bg-planet-purple/90 transition-all duration-300 transform hover:scale-110 hover:shadow-xl"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

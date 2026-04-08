@@ -12,5 +12,6 @@ router.put('/:id', auth, postController.updatePost);
 router.delete('/:id', auth, postController.deletePost);
 router.post('/:id/like', auth, postController.likePost);
 router.post('/:id/favorite', auth, postController.favoritePost);
+router.post('/:id/toggle-pin', auth, postController.togglePin);
 
 module.exports = router;

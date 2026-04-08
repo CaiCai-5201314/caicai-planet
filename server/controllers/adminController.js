@@ -1,5 +1,6 @@
-const { User, Post, Comment, Task, UserTask, FriendLink, SiteConfig, BannedWord, Sequelize } = require('../models');
+const { User, Post, Comment, Task, UserTask, FriendLink, SiteConfig, BannedWord, Sequelize, Notification, AnnouncementRead, OperationLog, Like, Favorite, TaskProposal } = require('../models');
 const { Op } = Sequelize;
+const sequelize = require('../models/index').sequelize;
 const { createNotification } = require('./notificationController');
 const { hashPassword } = require('../utils/password');
 
@@ -10,6 +11,18 @@ const adminController = {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // 计算本周一的开始时间
+      const thisMonday = new Date();
+      const dayOfWeek = thisMonday.getDay(); // 0-6, 0是周日
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      thisMonday.setDate(thisMonday.getDate() + daysToMonday);
+      thisMonday.setHours(0, 0, 0, 0);
+
+      // 计算上周一的开始时间
+      const lastMonday = new Date(thisMonday);
+      lastMonday.setDate(lastMonday.getDate() - 7);
+
+      // 获取本周一的统计数据（截止到当前时间）
       const [
         userCount,
         postCount,
@@ -19,7 +32,13 @@ const adminController = {
         recentPosts,
         todayNewUsers,
         todayNewPosts,
-        todayNewComments
+        todayNewComments,
+        thisWeekUsers,
+        thisWeekPosts,
+        thisWeekComments,
+        lastWeekUsers,
+        lastWeekPosts,
+        lastWeekComments
       ] = await Promise.all([
         User.count(),
         Post.count({ where: { status: 'published' } }),
@@ -44,8 +63,44 @@ const adminController = {
         }),
         User.count({ where: { created_at: { [Op.gte]: today } } }),
         Post.count({ where: { created_at: { [Op.gte]: today } } }),
-        Comment.count({ where: { created_at: { [Op.gte]: today } } })
+        Comment.count({ where: { created_at: { [Op.gte]: today } } }),
+        // 本周一到现在的新增数据
+        User.count({ where: { created_at: { [Op.gte]: thisMonday } } }),
+        Post.count({ where: { created_at: { [Op.gte]: thisMonday }, status: 'published' } }),
+        Comment.count({ where: { created_at: { [Op.gte]: thisMonday } } }),
+        // 上周一到本周一的新增数据
+        User.count({ where: { 
+          created_at: { 
+            [Op.gte]: lastMonday,
+            [Op.lt]: thisMonday 
+          } 
+        } }),
+        Post.count({ where: { 
+          created_at: { 
+            [Op.gte]: lastMonday,
+            [Op.lt]: thisMonday 
+          },
+          status: 'published' 
+        } }),
+        Comment.count({ where: { 
+          created_at: { 
+            [Op.gte]: lastMonday,
+            [Op.lt]: thisMonday 
+          } 
+        } })
       ]);
+
+      // 计算增长率（如果上周为0，显示100%）
+      const calculateTrend = (current, previous) => {
+        if (previous === 0) {
+          return current > 0 ? 100 : 0;
+        }
+        return Math.round(((current - previous) / previous) * 100);
+      };
+
+      const userTrend = calculateTrend(thisWeekUsers, lastWeekUsers);
+      const postTrend = calculateTrend(thisWeekPosts, lastWeekPosts);
+      const commentTrend = calculateTrend(thisWeekComments, lastWeekComments);
 
       // 计算系统运行天数（从最早用户注册时间开始）
       const firstUser = await User.findOne({
@@ -65,7 +120,12 @@ const adminController = {
           todayNewUsers,
           todayNewPosts,
           todayNewComments,
-          runningDays
+          runningDays,
+          userTrend,
+          postTrend,
+          commentTrend,
+          thisMonday: thisMonday.toISOString(),
+          lastMonday: lastMonday.toISOString()
         },
         recentUsers,
         recentPosts
@@ -959,6 +1019,45 @@ const adminController = {
     } catch (error) {
       console.error('删除用户任务错误:', error);
       res.status(500).json({ message: '删除用户任务失败' });
+    }
+  },
+
+  // 删除用户
+  deleteUser: async (req, res) => {
+    console.log('接收到删除用户请求:', req.params);
+    try {
+      const { id } = req.params;
+      console.log('用户ID:', id, '类型:', typeof id);
+
+      // 查找用户
+      console.log('开始查找用户...');
+      const user = await User.findByPk(id);
+      if (!user) {
+        console.log('用户不存在:', id);
+        return res.status(404).json({ message: '用户不存在' });
+      }
+      console.log('找到用户:', user.username, '角色:', user.role);
+
+      // 禁止删除管理员账号
+      if (user.role === 'admin') {
+        console.log('不能删除管理员账号:', id);
+        return res.status(403).json({ message: '不能删除管理员账号' });
+      }
+
+      console.log('开始删除用户:', id);
+      const models = require('../models');
+      console.log('模型加载完成');
+      
+      // 简化删除逻辑，只删除用户本身
+      console.log('直接删除用户本身...');
+      await user.destroy();
+
+      console.log('用户删除成功:', id);
+      res.json({ message: '用户删除成功' });
+    } catch (error) {
+      console.error('删除用户错误:', error);
+      console.error('错误堆栈:', error.stack);
+      res.status(500).json({ message: '删除用户失败', error: error.message });
     }
   }
 };

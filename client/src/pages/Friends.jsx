@@ -6,7 +6,6 @@ import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
 const categories = [
-  { id: 'all', name: '全部' },
   { id: 'tech', name: '技术' },
   { id: 'life', name: '生活' },
   { id: 'design', name: '设计' },
@@ -15,26 +14,23 @@ const categories = [
 
 export default function Friends() {
   const [friendLinks, setFriendLinks] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applyForm, setApplyForm] = useState({
     name: '',
     url: '',
-    description: '',
-    category: 'other'
+    description: ''
   });
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     fetchFriendLinks();
-  }, [activeCategory]);
+  }, []);
 
   const fetchFriendLinks = async () => {
     try {
       setLoading(true);
-      const params = activeCategory !== 'all' ? `?category=${activeCategory}` : '';
-      const response = await api.get(`/friend-links${params}`);
+      const response = await api.get('/friend-links');
       setFriendLinks(response.data.friendLinks);
     } catch (error) {
       console.error('获取友链失败:', error);
@@ -49,7 +45,7 @@ export default function Friends() {
       await api.post('/friend-links/apply', applyForm);
       toast.success('友链申请已提交，等待审核');
       setShowApplyModal(false);
-      setApplyForm({ name: '', url: '', description: '', category: 'other' });
+      setApplyForm({ name: '', url: '', description: '' });
     } catch (error) {
       toast.error(error.response?.data?.message || '申请失败');
     }
@@ -68,23 +64,7 @@ export default function Friends() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
-            <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    activeCategory === cat.id
-                      ? 'bg-planet-purple text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-            
+          <div className="flex flex-col sm:flex-row items-center justify-end mb-8 gap-4">
             <button
               onClick={() => {
                 if (!isAuthenticated) {
@@ -113,12 +93,16 @@ export default function Friends() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {friendLinks.map((link) => (
-                <a
+                <div
                   key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-lg hover:border-planet-purple/30 transition-all"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error('请先登录后访问');
+                      return;
+                    }
+                    window.open(link.url, '_blank', 'noopener noreferrer');
+                  }}
+                  className={`group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all ${isAuthenticated ? 'hover:shadow-lg hover:border-planet-purple/30 cursor-pointer' : 'opacity-70 cursor-not-allowed'}`}
                 >
                   <div className="flex items-start space-x-4">
                     <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-planet-purple/10 to-planet-pink/10 flex items-center justify-center flex-shrink-0">
@@ -134,22 +118,19 @@ export default function Friends() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-bold text-gray-900 group-hover:text-planet-purple transition-colors truncate">
+                        <h3 className={`font-bold transition-colors truncate ${isAuthenticated ? 'text-gray-900 group-hover:text-planet-purple' : 'text-gray-500'}`}>
                           {link.name}
                         </h3>
-                        <FiExternalLink size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {isAuthenticated && (
+                          <FiExternalLink size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
                       </div>
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">
                         {link.description || '暂无描述'}
                       </p>
-                      <div className="flex items-center space-x-2 mt-3">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                          {categories.find(c => c.id === link.category)?.name || '其他'}
-                        </span>
-                      </div>
                     </div>
                   </div>
-                </a>
+                </div>
               ))}
             </div>
           )}
@@ -186,20 +167,6 @@ export default function Friends() {
                   className="input-field"
                   placeholder="https://example.com"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  分类
-                </label>
-                <select
-                  value={applyForm.category}
-                  onChange={(e) => setApplyForm({ ...applyForm, category: e.target.value })}
-                  className="input-field"
-                >
-                  {categories.filter(c => c.id !== 'all').map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -3,9 +3,9 @@ import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
   FiHome, FiUsers, FiFileText, FiMessageSquare, FiLink, FiLogOut,
   FiTrendingUp, FiActivity, FiCalendar, FiMoreVertical, FiEdit2,
-  FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX,
+  FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX, FiTrash2,
   FiCamera, FiSave, FiCheck, FiAlertCircle, FiSettings, FiShield, FiAlertTriangle,
-  FiTarget, FiLayers
+  FiTarget, FiLayers, FiStar
 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
@@ -15,6 +15,8 @@ import ErrorManagement from './ErrorManagement';
 import TaskCenterManagement from './TaskCenterManagement';
 import TaskTypeManagement from './TaskTypeManagement';
 import UserTaskManagement from './UserTaskManagement';
+import AnnouncementManagement from './AnnouncementManagement';
+import AuthorizationManagement from './AuthorizationManagement';
 
 // 友链管理组件
 function FriendLinkManagement() {
@@ -28,7 +30,6 @@ function FriendLinkManagement() {
     url: '',
     avatar: '',
     description: '',
-    category: 'other',
     reciprocal_url: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
@@ -81,7 +82,6 @@ function FriendLinkManagement() {
         url: '',
         avatar: '',
         description: '',
-        category: 'other',
         reciprocal_url: ''
       });
       fetchFriendLinks();
@@ -249,11 +249,8 @@ function FriendLinkManagement() {
                         {link.description || '无描述'}
                       </div>
                       <div className="mt-2 text-gray-500 text-xs">
-                        <span className="bg-gray-100 px-2 py-1 rounded">
-                          {categoryMap[link.category]}
-                        </span>
                         {link.reciprocal_url && (
-                          <span className="ml-2 text-blue-500">
+                          <span className="text-blue-500">
                             回链: {link.reciprocal_url}
                           </span>
                         )}
@@ -330,13 +327,53 @@ function FriendLinkManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站Logo</label>
-                <input
-                  type="text"
-                  value={newLink.avatar}
-                  onChange={(e) => setNewLink({ ...newLink, avatar: e.target.value })}
-                  placeholder="请输入Logo URL"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
+                <div className="flex items-center space-x-4">
+                  {newLink.avatar && (
+                    <img
+                      src={newLink.avatar}
+                      alt="Logo预览"
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={newLink.avatar}
+                      onChange={(e) => setNewLink({ ...newLink, avatar: e.target.value })}
+                      placeholder="请输入Logo URL或上传图片"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
+                    />
+                    <label className="flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+                      <FiCamera className="mr-2" />
+                      <span>上传图片</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          try {
+                            const response = await api.post('/upload/friend-links', formData, {
+                              headers: {
+                                'Content-Type': 'multipart/form-data'
+                              }
+                            });
+                            setNewLink({ ...newLink, avatar: response.data.url });
+                            toast.success('图片上传成功');
+                          } catch (error) {
+                            console.error('上传失败:', error);
+                            toast.error('图片上传失败');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站描述</label>
@@ -347,20 +384,6 @@ function FriendLinkManagement() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                <select
-                  value={newLink.category}
-                  onChange={(e) => setNewLink({ ...newLink, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">回链URL</label>
@@ -419,13 +442,53 @@ function FriendLinkManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站Logo</label>
-                <input
-                  type="text"
-                  value={currentLink.avatar}
-                  onChange={(e) => setCurrentLink({ ...currentLink, avatar: e.target.value })}
-                  placeholder="请输入Logo URL"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
+                <div className="flex items-center space-x-4">
+                  {currentLink.avatar && (
+                    <img
+                      src={currentLink.avatar}
+                      alt="Logo预览"
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={currentLink.avatar}
+                      onChange={(e) => setCurrentLink({ ...currentLink, avatar: e.target.value })}
+                      placeholder="请输入Logo URL或上传图片"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
+                    />
+                    <label className="flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+                      <FiCamera className="mr-2" />
+                      <span>上传图片</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          try {
+                            const response = await api.post('/upload/friend-links', formData, {
+                              headers: {
+                                'Content-Type': 'multipart/form-data'
+                              }
+                            });
+                            setCurrentLink({ ...currentLink, avatar: response.data.url });
+                            toast.success('图片上传成功');
+                          } catch (error) {
+                            console.error('上传失败:', error);
+                            toast.error('图片上传失败');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站描述</label>
@@ -436,20 +499,6 @@ function FriendLinkManagement() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                <select
-                  value={currentLink.category}
-                  onChange={(e) => setCurrentLink({ ...currentLink, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">回链URL</label>
@@ -1578,27 +1627,49 @@ function AdminLayout({ children }) {
     fetchUser();
   }
 
-  const menuItems = [
-    { path: '/admin', icon: FiHome, label: '仪表盘' },
-    { path: '/admin/users', icon: FiUsers, label: '用户管理' },
-    { path: '/admin/posts', icon: FiFileText, label: '文章管理' },
-    { path: '/admin/comments', icon: FiMessageSquare, label: '评论管理' },
-    { path: '/admin/friend-links', icon: FiLink, label: '友链管理' },
-    { path: '/admin/banned-words', icon: FiShield, label: '违禁词管理' },
-    { path: '/admin/task-types', icon: FiLayers, label: '任务类型管理' },
-    { path: '/admin/task-center', icon: FiTarget, label: '任务中心管理' },
-    { path: '/admin/user-tasks', icon: FiUsers, label: '用户任务管理' },
-    { path: '/admin/error-management', icon: FiAlertCircle, label: '错误管理' },
-    { path: '/admin/site-configs', icon: FiSettings, label: '网站配置' },
-  ];
+  // 根据用户角色和权限过滤菜单项目
+  const getMenuItems = () => {
+    const allMenuItems = [
+      { path: '/admin', icon: FiHome, label: '仪表盘', permission: 'dashboard' },
+      { path: '/admin/users', icon: FiUsers, label: '用户管理', permission: 'userManagement' },
+      { path: '/admin/authorization', icon: FiLock, label: '授权中心', permission: 'authorization' },
+      { path: '/admin/posts', icon: FiFileText, label: '文章管理', permission: 'postManagement' },
+      { path: '/admin/comments', icon: FiMessageSquare, label: '评论管理', permission: 'commentManagement' },
+      { path: '/admin/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
+      { path: '/admin/banned-words', icon: FiShield, label: '违禁词管理', permission: 'bannedWordManagement' },
+      { path: '/admin/task-types', icon: FiLayers, label: '任务类型管理', permission: 'taskTypeManagement' },
+      { path: '/admin/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
+      { path: '/admin/task-center', icon: FiTarget, label: '任务中心管理', permission: 'taskCenter' },
+      { path: '/admin/user-tasks', icon: FiUsers, label: '用户任务管理', permission: 'userTaskManagement' },
+      { path: '/admin/error-management', icon: FiAlertCircle, label: '错误管理', permission: 'errorManagement' },
+      { path: '/admin/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
+    ];
+
+    // 管理员显示所有菜单
+    if (user?.role === 'admin') {
+      return allMenuItems;
+    }
+
+    // 子权限账号根据权限显示菜单
+    if (user?.role === 'sub_admin') {
+      return allMenuItems.filter(item => 
+        user.permissions?.[item.permission]
+      );
+    }
+
+    // 默认返回空数组
+    return [];
+  };
+
+  const menuItems = getMenuItems();
 
   if (!user) {
     console.log('AdminLayout - no user, redirecting to login');
     return <Navigate to="/admin/login" />;
   }
 
-  if (user?.role !== 'admin') {
-    console.log('AdminLayout - not admin, redirecting to login');
+  if (user?.role !== 'admin' && user?.role !== 'sub_admin') {
+    console.log('AdminLayout - not admin or sub_admin, redirecting to login');
     return <Navigate to="/admin/login" />;
   }
 
@@ -1759,21 +1830,21 @@ function DashboardHome() {
           value={stats.stats.userCount} 
           icon={FiUsers} 
           color="blue" 
-          trend={12}
+          trend={stats.stats.userTrend}
         />
         <StatCard 
           label="文章数量" 
           value={stats.stats.postCount} 
           icon={FiFileText} 
           color="green" 
-          trend={8}
+          trend={stats.stats.postTrend}
         />
         <StatCard 
           label="评论数量" 
           value={stats.stats.commentCount} 
           icon={FiMessageSquare} 
           color="yellow" 
-          trend={-3}
+          trend={stats.stats.commentTrend}
         />
         <StatCard 
           label="待审核友链" 
@@ -2215,6 +2286,8 @@ function UserManagement() {
     }
   };
 
+
+
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2361,6 +2434,8 @@ function UserManagement() {
                     >
                       {user.is_post_banned ? <FiSend size={18} /> : <FiX size={18} />}
                     </button>
+
+
                   </div>
                 </td>
               </tr>
@@ -2441,6 +2516,17 @@ function PostManagement() {
     }
   };
 
+  const handleTogglePin = async (postId) => {
+    try {
+      const response = await api.post(`/posts/${postId}/toggle-pin`);
+      toast.success(response.data.message);
+      fetchPosts();
+    } catch (error) {
+      console.error('置顶文章失败:', error);
+      toast.error(error.response?.data?.message || '置顶文章失败');
+    }
+  };
+
   const handleDeletePost = async (postId) => {
     if (window.confirm('确定要删除这篇文章吗？')) {
       try {
@@ -2517,7 +2603,15 @@ function PostManagement() {
               <tr key={post.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div>
-                    <p className="font-medium text-gray-900 mb-1">{post.title}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      {post.is_pinned && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                          <FiStar size={12} className="fill-yellow-500" />
+                          置顶
+                        </span>
+                      )}
+                      <p className="font-medium text-gray-900">{post.title}</p>
+                    </div>
                     <p className="text-sm text-gray-500 line-clamp-1">{post.summary}</p>
                   </div>
                 </td>
@@ -2540,7 +2634,17 @@ function PostManagement() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <button
+                      onClick={() => handleTogglePin(post.id)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        post.is_pinned
+                          ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                    >
+                      {post.is_pinned ? '取消置顶' : '置顶'}
+                    </button>
                     {post.status === 'pending' && (
                       <button
                         onClick={() => handleStatusChange(post.id, 'published')}
@@ -2583,21 +2687,38 @@ function PostManagement() {
   );
 }
 
+// 路由保护组件
+function ProtectedRoute({ children, requiredRole = 'admin', requiredPermission }) {
+  const { user } = useAuthStore();
+  
+  // 检查权限
+  if (user?.role === 'sub_admin') {
+    // 如果需要特定权限，检查用户是否有该权限
+    if (requiredPermission && !user.permissions?.[requiredPermission]) {
+      return <Navigate to="/admin" />;
+    }
+  }
+  
+  return children;
+}
+
 export default function AdminDashboard() {
   return (
     <AdminLayout>
       <Routes>
-        <Route path="/" element={<DashboardHome />} />
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/posts" element={<PostManagement />} />
-        <Route path="/comments" element={<CommentManagement />} />
-        <Route path="/friend-links" element={<FriendLinkManagement />} />
-        <Route path="/banned-words" element={<BannedWords />} />
-        <Route path="/task-types" element={<TaskTypeManagement />} />
-        <Route path="/task-center" element={<TaskCenterManagement />} />
-        <Route path="/user-tasks" element={<UserTaskManagement />} />
-        <Route path="/error-management" element={<ErrorManagement />} />
-        <Route path="/site-configs" element={<SiteConfig />} />
+        <Route path="/" element={<ProtectedRoute requiredPermission="dashboard"><DashboardHome /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute requiredPermission="userManagement"><UserManagement /></ProtectedRoute>} />
+        <Route path="/authorization" element={<ProtectedRoute requiredPermission="authorization"><AuthorizationManagement /></ProtectedRoute>} />
+        <Route path="/posts" element={<ProtectedRoute requiredPermission="postManagement"><PostManagement /></ProtectedRoute>} />
+        <Route path="/comments" element={<ProtectedRoute requiredPermission="commentManagement"><CommentManagement /></ProtectedRoute>} />
+        <Route path="/friend-links" element={<ProtectedRoute requiredPermission="friendLinkManagement"><FriendLinkManagement /></ProtectedRoute>} />
+        <Route path="/banned-words" element={<ProtectedRoute requiredPermission="bannedWordManagement"><BannedWords /></ProtectedRoute>} />
+        <Route path="/task-types" element={<ProtectedRoute requiredPermission="taskTypeManagement"><TaskTypeManagement /></ProtectedRoute>} />
+        <Route path="/announcements" element={<ProtectedRoute requiredPermission="announcementManagement"><AnnouncementManagement /></ProtectedRoute>} />
+        <Route path="/task-center" element={<ProtectedRoute requiredPermission="taskCenter"><TaskCenterManagement /></ProtectedRoute>} />
+        <Route path="/user-tasks" element={<ProtectedRoute requiredPermission="userTaskManagement"><UserTaskManagement /></ProtectedRoute>} />
+        <Route path="/error-management" element={<ProtectedRoute requiredPermission="errorManagement"><ErrorManagement /></ProtectedRoute>} />
+        <Route path="/site-configs" element={<ProtectedRoute requiredPermission="siteConfig"><SiteConfig /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );

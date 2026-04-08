@@ -32,15 +32,24 @@ export default function AdminLogin() {
 
       const { token, user } = response.data;
 
-      // 检查是否为管理员
-      if (user.role !== 'admin') {
-        toast.error('无权访问，仅管理员可登录');
+      // 检查是否为管理员或子管理员
+      if (user.role !== 'admin' && user.role !== 'sub_admin') {
+        toast.error('无权访问，仅管理员和子管理员可登录');
+        setIsLoading(false);
+        return;
+      }
+
+      // 检查账号状态
+      if (user.status === 'inactive') {
+        toast.error('账号未激活，请联系管理员处理');
         setIsLoading(false);
         return;
       }
 
       // 保存登录状态
+      console.log('登录成功，准备存储token:', token);
       localStorage.setItem('token', token);
+      console.log('token存储后:', localStorage.getItem('token'));
       
       // 直接更新 authStore 的状态
       setAdminUser(user);

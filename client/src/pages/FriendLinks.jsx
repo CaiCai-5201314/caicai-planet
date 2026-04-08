@@ -5,17 +5,14 @@ import api from '../services/api';
 function FriendLinks() {
   const [friendLinks, setFriendLinks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('all');
-
   useEffect(() => {
     fetchFriendLinks();
-  }, [activeCategory]);
+  }, []);
 
   const fetchFriendLinks = async () => {
     try {
       setLoading(true);
-      const params = activeCategory !== 'all' ? { category: activeCategory } : {};
-      const response = await api.get('/friend-links', { params });
+      const response = await api.get('/friend-links');
       setFriendLinks(response.data.friendLinks);
     } catch (error) {
       console.error('获取友链失败:', error);
@@ -23,14 +20,6 @@ function FriendLinks() {
       setLoading(false);
     }
   };
-
-  const categories = [
-    { value: 'all', label: '全部' },
-    { value: 'tech', label: '技术' },
-    { value: 'life', label: '生活' },
-    { value: 'design', label: '设计' },
-    { value: 'other', label: '其他' }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -43,22 +32,6 @@ function FriendLinks() {
             <p className="text-gray-600 max-w-2xl mx-auto">
               这里是菜菜星球的友好链接，欢迎与我们交换友链，共同成长
             </p>
-          </div>
-
-          {/* 分类导航 */}
-          <div className="flex flex-wrap justify-center gap-3 mb-10">
-            {categories.map((category) => (
-              <button
-                key={category.value}
-                onClick={() => setActiveCategory(category.value)}
-                className={`px-4 py-2 rounded-full transition-colors ${activeCategory === category.value
-                  ? 'bg-planet-purple text-white'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                  }`}
-              >
-                {category.label}
-              </button>
-            ))}
           </div>
 
           {/* 友链列表 */}
@@ -90,11 +63,6 @@ function FriendLinks() {
                       <h3 className="font-semibold text-lg text-gray-900 group-hover:text-planet-purple transition-colors">
                         {link.name}
                       </h3>
-                      <p className="text-gray-500 text-sm mt-1">
-                        {link.category === 'tech' ? '技术' :
-                         link.category === 'life' ? '生活' :
-                         link.category === 'design' ? '设计' : '其他'}
-                      </p>
                     </div>
                   </div>
                   <p className="text-gray-600 text-sm mb-4">

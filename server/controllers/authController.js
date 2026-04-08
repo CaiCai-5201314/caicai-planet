@@ -126,6 +126,11 @@ const authController = {
         return res.status(403).json({ message: '账号已被封禁' });
       }
 
+      if (user.status === 'inactive') {
+        logger.warn('登录失败：账号未激活', { username: user.username });
+        return res.status(403).json({ message: '账号未激活，请联系管理员处理' });
+      }
+
       const isPasswordValid = await comparePassword(password, user.password);
 
       if (!isPasswordValid) {
@@ -154,6 +159,8 @@ const authController = {
           nickname: user.nickname,
           avatar: user.avatar,
           role: user.role,
+          status: user.status,
+          permissions: user.permissions,
           bio: user.bio,
           level: user.level
         }

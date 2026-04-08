@@ -21,11 +21,12 @@ export const useAuthStore = create(
           errorTracker.setUserId(user.id);
           return { success: true };
         } catch (error) {
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || '登录失败';
           set({
-            error: error.response?.data?.message || '登录失败',
+            error: errorMessage,
             isLoading: false
           });
-          return { success: false, error: error.response?.data?.message };
+          return { success: false, error: errorMessage };
         }
       },
 
@@ -39,11 +40,12 @@ export const useAuthStore = create(
           errorTracker.setUserId(user.id);
           return { success: true, user };
         } catch (error) {
+          const errorMessage = error.response?.data?.message || error.response?.data?.error || '注册失败';
           set({
-            error: error.response?.data?.message || '注册失败',
+            error: errorMessage,
             isLoading: false
           });
-          return { success: false, error: error.response?.data?.message };
+          return { success: false, error: errorMessage };
         }
       },
 

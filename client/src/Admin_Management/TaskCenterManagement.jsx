@@ -65,7 +65,7 @@ export default function TaskCenterManagement() {
       fetchStats();
       fetchCustomTypes();
     }
-  }, [activeTab, currentPage, statusFilter, showProposalsTab]);
+  }, [activeTab, currentPage, statusFilter, searchTerm, showProposalsTab]);
 
   useEffect(() => {
     if (showProposalsTab) {
@@ -85,6 +85,14 @@ export default function TaskCenterManagement() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
+      // 检查token是否存在
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('没有找到token，需要重新登录');
+        toast.error('请重新登录');
+        return;
+      }
+      
       const response = await api.get('/admin/tasks', {
         params: {
           gender: activeTab,
@@ -98,7 +106,10 @@ export default function TaskCenterManagement() {
       setTotalPages(response.data.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取任务列表失败:', error);
-      toast.error('获取任务列表失败');
+      console.error('错误响应:', error.response);
+      console.error('错误消息:', error.message);
+      const errorMessage = error.response?.data?.message || '获取任务列表失败';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

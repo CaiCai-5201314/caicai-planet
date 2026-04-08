@@ -1,15 +1,19 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002/api'
+  baseURL: '/api'
 });
 
 api.interceptors.request.use(
   (config) => {
+    // 从localStorage中获取token
     const token = localStorage.getItem('token');
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API请求头:', config.headers);
     return config;
   },
   (error) => {

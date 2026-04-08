@@ -19,9 +19,13 @@ const errorRoutes = require('./routes/error');
 const notificationRoutes = require('./routes/notifications');
 const errorTypeRoutes = require('./Question/routes/errorTypes');
 const userTaskRoutes = require('./routes/userTasks');
+const shortLinkRoutes = require('./routes/shortLinks');
+const announcementRoutes = require('./routes/announcements');
+const authorizationRoutes = require('./routes/authorization');
 const adminController = require('./controllers/adminController');
 
 const errorHandler = require('./middleware/errorHandler');
+const { logOperation } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -60,7 +64,7 @@ const authLimiter = rateLimit({
 // 应用全局限制
 app.use(globalLimiter);
 app.use(cors({
-  origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL] : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', process.env.CLIENT_URL].filter(Boolean),
   credentials: true
 }));
 
@@ -76,14 +80,24 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/friend-links', friendLinkRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/tags', tagRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/admin', errorTypeRoutes);
+// 公告路由
+app.use('/api', announcementRoutes);
+app.use('/api/admin', logOperation, adminRoutes);
+app.use('/api/admin', logOperation, errorTypeRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api/error', errorRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/user-tasks', userTaskRoutes);
+app.use('/api/user-tasks', logOperation, userTaskRoutes);
 app.get('/api/site-configs', adminController.getSiteConfigs);
+
+// 短链接路由
+app.use('/api/short-links', shortLinkRoutes);
+// 短链接重定向
+app.use('/r', shortLinkRoutes);
+
+// 授权中心路由
+app.use('/api/authorization', authorizationRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -95,11 +109,11 @@ app.use('/api', (req, res) => {
 });
 
 // 提供前端静态文件
-app.use(express.static('/opt/caicai-planet/client/dist'));
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // 所有其他路由返回前端页面（支持前端路由）
 app.use((req, res) => {
-  res.sendFile('/opt/caicai-planet/client/dist/index.html');
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // 错误处理中间件（必须放在所有路由的最后）
@@ -114,6 +128,23 @@ const startServer = async () => {
 
     // 暂时禁用alter同步，避免索引数量超过限制
     await db.sequelize.sync({});
+    
+    // 手动添加所需字段
+    try {
+      await db.sequelize.query("ALTER TABLE users ADD COLUMN is_sub_account TINYINT(1) NOT NULL DEFAULT 0");
+    } catch (error) {
+      console.log('is_sub_account字段已存在');
+    }
+    try {
+      await db.sequelize.query("ALTER TABLE users ADD COLUMN parent_account_id INT");
+    } catch (error) {
+      console.log('parent_account_id字段已存在');
+    }
+    try {
+      await db.sequelize.query("ALTER TABLE users ADD COLUMN permissions JSON");
+    } catch (error) {
+      console.log('permissions字段已存在');
+    }
     console.log('数据库模型同步完成');
 
 

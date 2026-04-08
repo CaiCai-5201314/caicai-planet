@@ -132,6 +132,65 @@ export default function PostDetail() {
     }
   };
 
+  const handleShare = async () => {
+    try {
+      // 生成短链接
+      const response = await api.post('/short-links/generate', {
+        original_url: window.location.href
+      });
+      
+      if (response.data.success) {
+        const shortUrl = response.data.short_url;
+        
+        // 复制短链接到剪贴板
+        const tempInput = document.createElement('input');
+        tempInput.value = shortUrl;
+        tempInput.style.position = 'fixed';
+        tempInput.style.left = '-9999px';
+        document.body.appendChild(tempInput);
+        
+        tempInput.focus();
+        tempInput.select();
+        
+        const success = document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        
+        if (success) {
+          toast.success('链接已复制到剪贴板');
+        } else {
+          throw new Error('复制失败');
+        }
+      } else {
+        throw new Error('生成短链接失败');
+      }
+    } catch (error) {
+      console.error('分享失败:', error);
+      // 失败时使用原始链接作为备用
+      try {
+        const shareUrl = window.location.href;
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        tempInput.style.position = 'fixed';
+        tempInput.style.left = '-9999px';
+        document.body.appendChild(tempInput);
+        
+        tempInput.focus();
+        tempInput.select();
+        
+        const success = document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        
+        if (success) {
+          toast.success('链接已复制到剪贴板');
+        } else {
+          throw new Error('复制失败');
+        }
+      } catch (clipboardError) {
+        toast.error('分享失败，请手动复制链接');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -257,7 +316,23 @@ export default function PostDetail() {
                   >
                     <FiBookmark className={post.isFavorited ? 'fill-current' : ''} />
                   </button>
-                  <button className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleShare();
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="p-2 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+                    type="button"
+                  >
                     <FiShare2 />
                   </button>
                 </div>
@@ -436,6 +511,8 @@ export default function PostDetail() {
               </div>
             </div>
           )}
+
+
         </div>
       </div>
     </div>

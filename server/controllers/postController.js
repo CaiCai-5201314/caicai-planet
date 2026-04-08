@@ -24,11 +24,11 @@ const postController = {
         ];
       }
 
-      let order = [['created_at', 'DESC']];
+      let order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['created_at', 'DESC']];
       if (sort === 'popular') {
-        order = [['view_count', 'DESC']];
+        order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['view_count', 'DESC']];
       } else if (sort === 'most_liked') {
-        order = [['like_count', 'DESC']];
+        order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['like_count', 'DESC']];
       }
 
       const include = [
@@ -289,6 +289,39 @@ const postController = {
     } catch (error) {
       console.error('收藏错误:', error);
       res.status(500).json({ message: '收藏失败' });
+    }
+  },
+
+  togglePin: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: '只有管理员可以置顶文章' });
+      }
+
+      const post = await Post.findByPk(id);
+
+      if (!post) {
+        return res.status(404).json({ message: '文章不存在' });
+      }
+
+      const newPinnedStatus = !post.is_pinned;
+      const newPinnedAt = newPinnedStatus ? new Date() : null;
+
+      await post.update({
+        is_pinned: newPinnedStatus,
+        pinned_at: newPinnedAt
+      });
+
+      res.json({ 
+        message: newPinnedStatus ? '文章置顶成功' : '取消置顶成功',
+        is_pinned: newPinnedStatus,
+        pinned_at: newPinnedAt
+      });
+    } catch (error) {
+      console.error('置顶文章错误:', error);
+      res.status(500).json({ message: '置顶文章失败' });
     }
   }
 };
