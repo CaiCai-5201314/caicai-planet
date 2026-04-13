@@ -182,6 +182,9 @@ export default function Register() {
                     placeholder="请输入邮箱地址"
                   />
                 </div>
+                <p className="mt-2 text-sm text-gray-500">
+                  支持的邮箱：QQ邮箱、163邮箱、Gmail（谷歌邮箱）
+                </p>
               </div>
 
               <div>

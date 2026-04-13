@@ -23,7 +23,7 @@ export default function Terms() {
           {/* 标题 */}
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">服务条款</h1>
-            <p className="text-gray-600">最后更新日期：2026年4月4日</p>
+            <p className="text-gray-600">最后更新日期：2026年4月14日</p>
           </div>
 
           {/* 内容 */}
@@ -81,14 +81,18 @@ export default function Terms() {
                 <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
                   <FiShield className="text-green-600" size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">三、积分与任务规则</h2>
+                <h2 className="text-xl font-bold text-gray-900">三、积分、经验值与任务规则</h2>
               </div>
               <div className="pl-13 space-y-3 text-gray-700">
-                <p>3.1 本平台设有积分系统，用户可以通过完成任务、发布内容等方式获得积分。</p>
-                <p>3.2 积分仅用于本平台内的虚拟奖励，不可兑换现金或转让给他人。</p>
+                <p>3.1 本平台设有积分系统、经验值系统和月球分系统，用户可以通过完成任务、发布内容、打卡签到、提议任务等方式获得相应奖励。</p>
+                <p>3.2 积分、经验值和月球分仅用于本平台内的虚拟奖励、等级提升和权益兑换，不可兑换现金或转让给他人。</p>
                 <p>3.3 用户接受任务后应认真完成，不得恶意刷分或利用漏洞获取不当利益。</p>
-                <p>3.4 如发现作弊行为，我们有权扣除相应积分，情节严重的将封禁账号。</p>
+                <p>3.4 如发现作弊行为，我们有权扣除相应积分、经验值或月球分，情节严重的将封禁账号。</p>
                 <p>3.5 任务发布者应确保任务内容合法合规，不得发布违法或有害的任务。</p>
+                <p>3.6 用户可以提议任务，提议的任务经管理员审核通过后发布。当用户提议的任务被其他用户完成时，提议用户可获得月球分奖励，具体奖励金额以系统规则为准。</p>
+                <p>3.7 月球分可能会根据系统规则进行定期衰减，用户应关注系统公告了解具体衰减规则。</p>
+                <p>3.8 用户经验值达到一定标准可升级账号等级，不同等级享有不同的平台权益。</p>
+                <p>3.9 用户可以通过每日打卡获得奖励，连续打卡可获得额外奖励。</p>
               </div>
             </section>
 
@@ -125,10 +129,26 @@ export default function Terms() {
             {/* 第六条 */}
             <section>
               <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <FiUser className="text-indigo-600" size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">六、子账号与授权</h2>
+              </div>
+              <div className="pl-13 space-y-3 text-gray-700">
+                <p>6.1 主账号管理员可以创建子权限账号，并为子账号分配特定的平台功能权限。</p>
+                <p>6.2 子账号的所有操作均由主账号管理员负责，主账号对其子账号的行为承担全部责任。</p>
+                <p>6.3 子账号的权限范围以主账号管理员的设置为准，子账号只能访问被授权的功能模块。</p>
+                <p>6.4 主账号管理员有权随时修改、暂停或终止子账号的权限。</p>
+              </div>
+            </section>
+
+            {/* 第七条 */}
+            <section>
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
                   <FiMail className="text-red-600" size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">六、联系我们</h2>
+                <h2 className="text-xl font-bold text-gray-900">七、联系我们</h2>
               </div>
               <div className="pl-13 space-y-3 text-gray-700">
                 <p>如您对本条款有任何疑问，请通过以下方式联系我们：</p>
