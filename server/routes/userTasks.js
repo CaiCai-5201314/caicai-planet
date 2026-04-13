@@ -21,4 +21,10 @@ router.get('/my-likes', auth, userTaskController.getUserLikedTasks);
 // 检查任务状态
 router.get('/:taskId/status', auth, userTaskController.checkTaskStatus);
 
+// 任务失败处理
+router.post('/:taskId/fail', auth, userTaskController.failTask);
+
+// 获取用户任务状态和处罚信息
+router.get('/status', auth, userTaskController.getUserTaskStatus);
+
 module.exports = router;

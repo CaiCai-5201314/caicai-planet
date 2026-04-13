@@ -4,7 +4,8 @@ const { Op } = require('sequelize');
 // 获取任务类型列表
 exports.getTaskTypes = async (req, res) => {
   try {
-    const { gender, isActive, includeInactive } = req.query;
+    const { gender, isActive, includeInactive, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
     
     const where = {};
     
@@ -19,7 +20,7 @@ exports.getTaskTypes = async (req, res) => {
       where.isActive = true;
     }
 
-    const taskTypes = await TaskType.findAll({
+    const { count, rows: taskTypes } = await TaskType.findAndCountAll({
       where,
       attributes: {
         exclude: ['difficulty']
@@ -31,10 +32,20 @@ exports.getTaskTypes = async (req, res) => {
           attributes: ['id', 'username', 'nickname']
         }
       ],
-      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']]
+      order: [['sortOrder', 'ASC'], ['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
-    res.json({ taskTypes });
+    res.json({ 
+      taskTypes,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        totalPages: Math.ceil(count / limit)
+      }
+    });
   } catch (error) {
     console.error('获取任务类型列表失败:', error);
     res.status(500).json({ message: '获取任务类型列表失败', error: error.message });

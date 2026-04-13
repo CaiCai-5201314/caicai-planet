@@ -11,7 +11,6 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    nickname: '',
     verificationCode: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -79,7 +78,6 @@ export default function Register() {
       username: formData.username,
       email: formData.email,
       password: formData.password,
-      nickname: formData.nickname || formData.username,
       verificationCode: formData.verificationCode
     });
 
@@ -211,23 +209,6 @@ export default function Register() {
                   >
                     {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}秒后重试` : '获取验证码'}
                   </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  昵称
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={formData.nickname}
-                    onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                    className="input-field pl-12"
-                    placeholder="显示名称（可选，默认为用户名）"
-                    maxLength={50}
-                  />
                 </div>
               </div>
 

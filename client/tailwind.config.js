@@ -22,6 +22,7 @@ export default {
     'text-pink-600',
     'text-gray-600',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

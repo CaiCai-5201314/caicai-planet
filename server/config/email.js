@@ -88,8 +88,65 @@ const sendVerificationCode = async (email, code) => {
   }
 };
 
+// 发送邮件（根据用户设置决定是否发送，验证码和账号封禁除外）
+const sendEmailWithSettings = async (userId, mailOptions, type = 'general') => {
+  // 验证码和账号封禁邮件总是发送
+  if (type === 'verification' || type === 'ban') {
+    try {
+      const result = await transporterQQ.sendMail(mailOptions);
+      console.log('邮件发送成功:', result.messageId);
+      return result;
+    } catch (error) {
+      console.error('邮件发送失败:', error);
+      throw error;
+    }
+  }
+
+  // 其他类型邮件检查用户设置
+  try {
+    // 延迟导入User模型，避免循环导入
+    const { User } = require('../models');
+    const user = await User.findByPk(userId);
+    if (!user) {
+      console.log('用户不存在，不发送邮件');
+      return null;
+    }
+
+    // 检查用户是否开启了邮件通知
+    if (!user.email_notifications) {
+      console.log('用户未开启邮件通知，不发送邮件');
+      return null;
+    }
+
+    // 根据邮件类型检查具体设置
+    if (type === 'comment' && !user.comment_notifications) {
+      console.log('用户未开启评论通知，不发送邮件');
+      return null;
+    }
+
+    if (type === 'like' && !user.like_notifications) {
+      console.log('用户未开启点赞通知，不发送邮件');
+      return null;
+    }
+
+    if (type === 'system' && !user.system_notifications) {
+      console.log('用户未开启系统通知，不发送邮件');
+      return null;
+    }
+
+    // 发送邮件
+    const result = await transporterQQ.sendMail(mailOptions);
+    console.log('邮件发送成功:', result.messageId);
+    return result;
+  } catch (error) {
+    console.error('邮件发送失败:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendVerificationCode,
+  sendEmailWithSettings,
   transporter163,
   transporterQQ
 };

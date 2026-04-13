@@ -12,6 +12,7 @@ router.get('/favorites', auth, userController.getUserFavorites);
 router.get('/likes', auth, userController.getUserLikes);
 router.post('/avatar', auth, upload.single('avatar'), userController.uploadAvatar);
 router.post('/cover', auth, upload.single('cover'), userController.uploadCover);
+router.put('/settings', auth, userController.updateSettings);
 
 // 获取任务类型（普通用户也可访问）
 router.get('/task-types', taskTypeController.getTaskTypes);

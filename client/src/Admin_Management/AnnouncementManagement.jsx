@@ -19,16 +19,19 @@ export default function AnnouncementManagement() {
     level: 'light'
   });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchAnnouncements();
-  }, []);
+  }, [currentPage]);
 
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/announcements');
-      setAnnouncements(response.data.data);
+      const response = await api.get(`/admin/announcements?page=${currentPage}&limit=20`);
+      setAnnouncements(response.data?.announcements || response.data?.data || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取公告列表失败:', error);
       toast.error('获取公告列表失败');
@@ -112,7 +115,7 @@ export default function AnnouncementManagement() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 flex flex-col min-h-[calc(100vh-8rem)]">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">公告管理</h2>
         <button
@@ -124,7 +127,7 @@ export default function AnnouncementManagement() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-grow flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -176,6 +179,52 @@ export default function AnnouncementManagement() {
             </tbody>
           </table>
         </div>
+        
+        {/* 分页 */}
+        {!loading && (
+          <div className="px-6 py-6 border-t border-gray-100 flex items-center justify-center mt-auto">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                下一页
+              </button>
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* 创建/编辑模态框 */}

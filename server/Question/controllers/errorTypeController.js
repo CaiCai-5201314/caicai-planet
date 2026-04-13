@@ -32,9 +32,12 @@ const errorTypeController = {
 
       res.json({
         errorTypes: rows,
-        total: count,
-        page: parseInt(page),
-        limit: parseInt(limit)
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
       });
     } catch (error) {
       console.error('获取错误类型列表错误:', error);

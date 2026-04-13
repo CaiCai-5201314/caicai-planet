@@ -5,7 +5,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'caicai_planet_secret_key_2024';
 
 const auth = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    // 从Authorization头或cookie中获取token
+    let token = req.headers.authorization?.split(' ')[1];
+    
+    // 如果Authorization头中没有token，尝试从cookie中获取
+    if (!token) {
+      token = req.cookies?.token;
+    }
     
     if (!token) {
       return res.status(401).json({ message: '未提供认证令牌' });
@@ -22,6 +28,11 @@ const auth = async (req, res, next) => {
 
     if (user.status === 'banned') {
       return res.status(403).json({ message: '账号已被封禁' });
+    }
+
+    // 检查token是否与用户存储的current_token一致，实现单设备登录限制
+    if (user.current_token && user.current_token !== token) {
+      return res.status(401).json({ message: '该账户已在其他设备登录，当前登录已挤掉之前的会话' });
     }
 
     // 将 Sequelize 模型实例转换为普通对象，确保 permissions 是对象类型
@@ -60,7 +71,22 @@ const optionalAuth = async (req, res, next) => {
       });
       
       if (user && user.status !== 'banned') {
-        req.user = user;
+        // 将 Sequelize 模型实例转换为普通对象，确保 permissions 是对象类型
+        const userData = user.toJSON();
+        
+        // 确保 permissions 是对象类型（处理 JSON 字段）
+        if (typeof userData.permissions === 'string') {
+          try {
+            userData.permissions = JSON.parse(userData.permissions);
+          } catch (e) {
+            console.error('解析 permissions 失败:', e);
+            userData.permissions = {};
+          }
+        } else if (!userData.permissions) {
+          userData.permissions = {};
+        }
+        
+        req.user = userData;
       }
     }
     

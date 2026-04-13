@@ -1,6 +1,25 @@
 const { Notification, User } = require('../models');
 
 const notificationController = {
+  // 获取未读通知数量
+  getUnreadCount: async (req, res) => {
+    try {
+      const { id } = req.user;
+      
+      const count = await Notification.count({
+        where: { user_id: id, is_read: false }
+      });
+
+      res.json({
+        success: true,
+        count
+      });
+    } catch (error) {
+      console.error('获取未读通知数量失败:', error);
+      res.status(500).json({ success: false, message: '获取未读通知数量失败' });
+    }
+  },
+
   // 获取用户通知
   getUserNotifications: async (req, res) => {
     try {
@@ -70,6 +89,33 @@ const notificationController = {
       const user = await User.findByPk(userId);
       if (!user) {
         console.error('用户不存在，无法创建通知');
+        return false;
+      }
+
+      // 根据通知类型检查用户设置
+      let shouldCreate = false;
+      
+      switch (type) {
+        case 'comment':
+          shouldCreate = user.comment_notifications !== false;
+          break;
+        case 'like':
+          shouldCreate = user.like_notifications !== false;
+          break;
+        case 'system':
+        case 'admin':
+          shouldCreate = user.system_notifications !== false;
+          break;
+        case 'article':
+          // 文章相关通知，默认创建
+          shouldCreate = true;
+          break;
+        default:
+          shouldCreate = true;
+      }
+
+      if (!shouldCreate) {
+        console.log(`用户 ${userId} 已关闭 ${type} 类型的通知，跳过创建`);
         return false;
       }
 

@@ -27,14 +27,22 @@ const userController = {
 
       const stats = await Promise.all([
         Post.count({ where: { author_id: user.id, status: 'published' } }),
-        Like.count({ where: { user_id: user.id } }),
+        Post.sum('like_count', { where: { author_id: user.id, status: 'published' } }) || 0,
         FriendLink.count({ where: { user_id: user.id, status: 'approved' } }),
         Comment.count({ where: { user_id: user.id } })
       ]);
 
+      console.log('用户获赞数:', stats[1]);
+
+      // 计算活跃天数（从注册日期到现在的天数）
+      const registeredAt = new Date(user.created_at);
+      const now = new Date();
+      const activeDays = Math.max(0, Math.floor((now - registeredAt) / (1000 * 60 * 60 * 24)));
+
       res.json({
         user: {
           ...user.toJSON(),
+          activeDays,
           stats: {
             postCount: stats[0],
             likeCount: stats[1],
@@ -147,12 +155,22 @@ const userController = {
 
   uploadAvatar: async (req, res) => {
     try {
+      console.log('Upload avatar request received');
+      console.log('Request file:', req.file);
+      console.log('Request user:', req.user);
+      
       if (!req.file) {
+        console.error('No file uploaded');
         return res.status(400).json({ message: '请上传图片' });
       }
 
       const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-      await req.user.update({ avatar: avatarUrl });
+      console.log('Avatar URL:', avatarUrl);
+      console.log('Updating user:', req.user.id);
+      
+      // 使用User模型来更新用户信息，而不是使用req.user.update()方法
+      await User.update({ avatar: avatarUrl }, { where: { id: req.user.id } });
+      console.log('User updated successfully');
 
       res.json({
         message: '头像上传成功',
@@ -166,12 +184,22 @@ const userController = {
 
   uploadCover: async (req, res) => {
     try {
+      console.log('Upload cover request received');
+      console.log('Request file:', req.file);
+      console.log('Request user:', req.user);
+      
       if (!req.file) {
+        console.error('No file uploaded');
         return res.status(400).json({ message: '请上传图片' });
       }
 
       const coverUrl = `/uploads/covers/${req.file.filename}`;
-      await req.user.update({ cover_image: coverUrl });
+      console.log('Cover URL:', coverUrl);
+      console.log('Updating user:', req.user.id);
+      
+      // 使用User模型来更新用户信息，而不是使用req.user.update()方法
+      await User.update({ cover_image: coverUrl }, { where: { id: req.user.id } });
+      console.log('User updated successfully');
 
       res.json({
         message: '封面上传成功',
@@ -222,6 +250,53 @@ const userController = {
     } catch (error) {
       console.error('获取用户点赞错误:', error);
       res.status(500).json({ message: '获取用户点赞失败' });
+    }
+  },
+
+  updateSettings: async (req, res) => {
+    try {
+      const {
+        email_notifications,
+        push_notifications,
+        comment_notifications,
+        like_notifications,
+        system_notifications,
+        badge_notifications,
+        profile_visibility,
+        show_email,
+        show_activity,
+        theme,
+        language
+      } = req.body;
+
+      const updateData = {};
+      if (email_notifications !== undefined) updateData.email_notifications = email_notifications;
+      if (push_notifications !== undefined) updateData.push_notifications = push_notifications;
+      if (comment_notifications !== undefined) updateData.comment_notifications = comment_notifications;
+      if (like_notifications !== undefined) updateData.like_notifications = like_notifications;
+      if (system_notifications !== undefined) updateData.system_notifications = system_notifications;
+      if (badge_notifications !== undefined) updateData.badge_notifications = badge_notifications;
+      if (profile_visibility !== undefined) updateData.profile_visibility = profile_visibility;
+      if (show_email !== undefined) updateData.show_email = show_email;
+      if (show_activity !== undefined) updateData.show_activity = show_activity;
+      if (theme !== undefined) updateData.theme = theme;
+      if (language !== undefined) updateData.language = language;
+
+      await User.update(updateData, { where: { id: req.user.id } });
+
+      // 获取更新后的用户信息
+      const updatedUser = await User.findOne({
+        where: { id: req.user.id },
+        attributes: { exclude: ['password'] }
+      });
+
+      res.json({
+        message: '设置更新成功',
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error('更新设置错误:', error);
+      res.status(500).json({ message: '更新设置失败' });
     }
   }
 };

@@ -1,6 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/adminController');
+
+// 导入新的管理控制器
+const dashboardAdminController = require('../controllers/dashboardAdminController');
+const userAdminController = require('../controllers/userAdminController');
+const postAdminController = require('../controllers/postAdminController');
+const commentAdminController = require('../controllers/commentAdminController');
+const siteConfigAdminController = require('../controllers/siteConfigAdminController');
+const userTaskAdminController = require('../controllers/userTaskAdminController');
+const userLevelController = require('../controllers/userLevelController');
+
 const bannedWordController = require('../controllers/bannedWordController');
 const friendLinkController = require('../controllers/friendLinkController');
 const taskController = require('../controllers/taskController');
@@ -12,37 +21,51 @@ const upload = require('../middleware/upload');
 router.use(auth);
 
 // 仪表盘
-router.get('/dashboard', requirePermission('dashboard'), adminController.getDashboard);
+router.get('/dashboard', requirePermission('dashboard'), dashboardAdminController.getDashboard);
 
 // 用户管理
-router.get('/users', requirePermission('userManagement'), adminController.getUsers);
-router.put('/users/:id', requirePermission('userManagement'), adminController.updateUser);
-router.put('/users/:id/status', requirePermission('userManagement'), adminController.updateUserStatus);
-router.put('/users/:id/ban', requirePermission('userManagement'), adminController.banUser);
-router.put('/users/:id/mute', requirePermission('userManagement'), adminController.muteUser);
-router.put('/users/:id/post-ban', requirePermission('userManagement'), adminController.postBanUser);
-router.post('/users/:id/avatar', requirePermission('userManagement'), upload.single('avatar'), adminController.updateUserAvatar);
+router.get('/users', requirePermission('userManagement'), userAdminController.getUsers);
+router.put('/users/:id', requirePermission('userManagement'), userAdminController.updateUser);
+router.put('/users/:id/status', requirePermission('userManagement'), userAdminController.updateUserStatus);
+router.put('/users/:id/ban', requirePermission('userManagement'), userAdminController.banUser);
+router.put('/users/:id/mute', requirePermission('userManagement'), userAdminController.muteUser);
+router.put('/users/:id/post-ban', requirePermission('userManagement'), userAdminController.postBanUser);
+router.post('/users/:id/avatar', requirePermission('userManagement'), upload.single('avatar'), userAdminController.updateUserAvatar);
+router.delete('/users/:id', requirePermission('userManagement'), userAdminController.deleteUser);
+
+// 账号等级管理
+router.get('/user-levels', requirePermission('userLevelManagement'), userLevelController.getAllLevels);
+router.post('/user-levels', requirePermission('userLevelManagement'), userLevelController.createLevel);
+router.get('/user-levels/:id', requirePermission('userLevelManagement'), userLevelController.getLevel);
+router.put('/user-levels/:id', requirePermission('userLevelManagement'), userLevelController.updateLevel);
+router.delete('/user-levels/:id', requirePermission('userLevelManagement'), userLevelController.deleteLevel);
 
 // 文章管理
-router.get('/posts', requirePermission('postManagement'), adminController.getPosts);
-router.put('/posts/:id/status', requirePermission('postManagement'), adminController.updatePostStatus);
+router.get('/posts', requirePermission('postManagement'), postAdminController.getPosts);
+router.put('/posts/:id/status', requirePermission('postManagement'), postAdminController.updatePostStatus);
 
 // 评论管理
-router.get('/comments', requirePermission('commentManagement'), adminController.getComments);
-router.put('/comments/:id/status', requirePermission('commentManagement'), adminController.updateCommentStatus);
-router.post('/comments/:id/reply', requirePermission('commentManagement'), adminController.replyComment);
+router.get('/comments', requirePermission('commentManagement'), commentAdminController.getComments);
+router.put('/comments/:id/status', requirePermission('commentManagement'), commentAdminController.updateCommentStatus);
+router.post('/comments/:id/reply', requirePermission('commentManagement'), commentAdminController.replyComment);
 
 // 友链管理
-router.get('/friend-links', requirePermission('friendLinkManagement'), adminController.getFriendLinks);
+router.get('/friend-links', requirePermission('friendLinkManagement'), friendLinkController.getFriendLinks);
 router.post('/friend-links', requirePermission('friendLinkManagement'), friendLinkController.applyFriendLink);
 router.put('/friend-links/:id', requirePermission('friendLinkManagement'), friendLinkController.updateFriendLink);
 router.delete('/friend-links/:id', requirePermission('friendLinkManagement'), friendLinkController.deleteFriendLink);
 router.put('/friend-links/:id/approve', requirePermission('friendLinkManagement'), friendLinkController.approveFriendLink);
 
+// 外链接管理
+const shareController = require('../controllers/shareController');
+router.post('/friend-links/:id/share', requirePermission('friendLinkManagement'), shareController.generateShareLink);
+router.get('/friend-links/:id/share', requirePermission('friendLinkManagement'), shareController.getShareLinkInfo);
+router.post('/friend-links/:id/share/reset', requirePermission('friendLinkManagement'), shareController.resetShareLink);
+
 // 网站配置管理
-router.get('/site-configs', requirePermission('siteConfig'), adminController.getSiteConfigs);
-router.post('/site-configs', requirePermission('siteConfig'), adminController.updateSiteConfig);
-router.post('/site-configs/batch', requirePermission('siteConfig'), adminController.batchUpdateSiteConfig);
+router.get('/site-configs', requirePermission('siteConfig'), siteConfigAdminController.getSiteConfigs);
+router.post('/site-configs', requirePermission('siteConfig'), siteConfigAdminController.updateSiteConfig);
+router.post('/site-configs/batch', requirePermission('siteConfig'), siteConfigAdminController.batchUpdateSiteConfig);
 
 // 违禁词管理
 router.get('/banned-words', requirePermission('bannedWordManagement'), bannedWordController.getBannedWords);
@@ -75,9 +98,9 @@ router.put('/task-types/topics/:topicId', requirePermission('taskTypeManagement'
 router.delete('/task-types/topics/:topicId', requirePermission('taskTypeManagement'), taskTypeController.deleteTopic);
 
 // 用户任务管理
-router.get('/user-tasks', requirePermission('userTaskManagement'), adminController.getUserTasks);
-router.put('/user-tasks/:id/status', requirePermission('userTaskManagement'), adminController.updateUserTaskStatus);
-router.delete('/user-tasks/:id', requirePermission('userTaskManagement'), adminController.deleteUserTask);
+router.get('/user-tasks', requirePermission('userTaskManagement'), userTaskAdminController.getUserTasks);
+router.put('/user-tasks/:id/status', requirePermission('userTaskManagement'), userTaskAdminController.updateUserTaskStatus);
+router.delete('/user-tasks/:id', requirePermission('userTaskManagement'), userTaskAdminController.deleteUserTask);
 
 // 任务提议管理
 router.get('/task-proposals', requirePermission('taskCenter'), taskController.getTaskProposals);
@@ -85,5 +108,6 @@ router.get('/task-proposals/stats', requirePermission('taskCenter'), taskControl
 router.put('/task-proposals/:id/approve', requirePermission('taskCenter'), taskController.approveTaskProposal);
 router.put('/task-proposals/:id/reject', requirePermission('taskCenter'), taskController.rejectTaskProposal);
 router.put('/task-proposals/:id', requirePermission('taskCenter'), taskController.updateTaskProposal);
+router.delete('/task-proposals/:id', requirePermission('taskCenter'), taskController.deleteTaskProposal);
 
 module.exports = router;

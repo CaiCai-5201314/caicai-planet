@@ -1,5 +1,6 @@
 const { Task, User, TaskType, TaskTopic, Like } = require('../models');
 const { Op } = require('sequelize');
+const { applyMoonPoints } = require('../services/moonPointService');
 
 // 获取任务列表
 exports.getTasks = async (req, res) => {
@@ -55,6 +56,11 @@ exports.getTasks = async (req, res) => {
           attributes: ['id', 'username', 'nickname']
         },
         {
+          model: User,
+          as: 'proposalUser',
+          attributes: ['id', 'username', 'nickname']
+        },
+        {
           model: TaskType,
           as: 'customType',
           attributes: ['id', 'name', 'icon', 'color']
@@ -96,6 +102,11 @@ exports.getTaskById = async (req, res) => {
           attributes: ['id', 'username', 'nickname']
         },
         {
+          model: User,
+          as: 'proposalUser',
+          attributes: ['id', 'username', 'nickname']
+        },
+        {
           model: TaskType,
           as: 'customType',
           attributes: ['id', 'name', 'icon', 'color']
@@ -131,7 +142,9 @@ exports.createTask = async (req, res) => {
       maxParticipants,
       icon,
       color,
-      status
+      status,
+      suggestedTime,
+      items
     } = req.body;
 
     console.log('创建任务数据:', req.body);
@@ -158,7 +171,9 @@ exports.createTask = async (req, res) => {
       icon: icon || '',
       color: color || '',
       createdBy: req.user.id,
-      status: status || 'draft'
+      status: status || 'draft',
+      suggestedTime: suggestedTime || null,
+      items: items || null
     });
 
     res.status(201).json({
@@ -189,7 +204,9 @@ exports.updateTask = async (req, res) => {
       endTime,
       maxParticipants,
       icon,
-      color
+      color,
+      suggestedTime,
+      items
     } = req.body;
 
     console.log('更新任务数据:', req.body);
@@ -219,7 +236,9 @@ exports.updateTask = async (req, res) => {
       endTime: endTime !== undefined ? endTime : task.endTime,
       maxParticipants: maxParticipants !== undefined ? maxParticipants : task.maxParticipants,
       icon: icon !== undefined ? icon : task.icon,
-      color: color !== undefined ? color : task.color
+      color: color !== undefined ? color : task.color,
+      suggestedTime: suggestedTime !== undefined ? suggestedTime : task.suggestedTime,
+      items: items !== undefined ? items : task.items
     });
 
     res.json({
@@ -384,7 +403,7 @@ const { TaskProposal } = require('../models');
 // 创建任务提议
 exports.createTaskProposal = async (req, res) => {
   try {
-    const { title, description, gender, difficulty } = req.body;
+    const { title, description, gender, difficulty, suggestedTime, items } = req.body;
     const userId = req.user.id;
 
     // 验证必填字段
@@ -405,12 +424,18 @@ exports.createTaskProposal = async (req, res) => {
       gender,
       difficulty: difficulty || 'medium',
       userId,
-      status: 'pending'
+      status: 'pending',
+      suggestedTime: suggestedTime || null,
+      items: items || null
     });
+
+    // 暂时不发放月球分，等待管理员审核后根据实际任务等级发放
+    let moonPointResult = null;
 
     res.status(201).json({
       message: '任务提议提交成功，等待管理员审核',
-      proposal
+      proposal,
+      moonPoint: moonPointResult
     });
   } catch (error) {
     console.error('创建任务提议失败:', error);
@@ -425,7 +450,7 @@ exports.getTaskProposals = async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        attributes: ['id', 'username', 'avatar']
+        attributes: ['id', 'username', 'email', 'avatar']
       }],
       order: [['createdAt', 'DESC']]
     });
@@ -456,6 +481,7 @@ exports.approveTaskProposal = async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = req.user.id;
+    const { difficulty: adminDifficulty } = req.body; // 后台审核时可以指定实际的任务难度
 
     const proposal = await TaskProposal.findByPk(id);
     if (!proposal) {
@@ -467,6 +493,7 @@ exports.approveTaskProposal = async (req, res) => {
     }
 
     const { TaskType, Task } = require('../models');
+    const { applyMoonPoints } = require('../services/moonPointService');
 
     // 确定需要创建任务的性别专区
     const gendersToCreate = [];
@@ -475,6 +502,10 @@ exports.approveTaskProposal = async (req, res) => {
     } else {
       gendersToCreate.push(proposal.gender);
     }
+
+    // 确定实际的任务难度（如果后台指定了难度，则使用后台指定的，否则使用用户提交的）
+    const actualDifficulty = adminDifficulty || proposal.difficulty;
+    console.log(`[approveTaskProposal] 用户提交难度: ${proposal.difficulty}, 后台实际难度: ${actualDifficulty}`);
 
     const createdTasks = [];
 
@@ -498,14 +529,36 @@ exports.approveTaskProposal = async (req, res) => {
         title: proposal.title,
         description: proposal.description,
         gender: gender,
-        difficulty: proposal.difficulty,
+        difficulty: actualDifficulty, // 使用实际的任务难度
         customTypeId: taskType.id,
         status: 'published',
         createdBy: adminId,
-        reward: 10
+        proposalUserId: proposal.userId, // 保存提议用户的ID
+        reward: 10,
+        suggestedTime: proposal.suggestedTime,
+        items: proposal.items
       });
 
       createdTasks.push(task);
+    }
+
+    // 根据实际的任务难度重新计算并发放月球分
+    // 首先撤销之前的月球分申请（如果有的话）
+    // 然后根据实际难度重新申请
+    let moonPointResult = null;
+    try {
+      let reasonType = 'submit_task_medium'; // 默认中等任务
+      if (actualDifficulty === 'easy') {
+        reasonType = 'submit_task_easy';
+      } else if (actualDifficulty === 'hard') {
+        reasonType = 'submit_task_hard';
+      }
+      
+      console.log(`[approveTaskProposal] 根据实际难度 ${actualDifficulty} 发放月球分，reasonType: ${reasonType}`);
+      moonPointResult = await applyMoonPoints(proposal.userId, reasonType, proposal.id);
+    } catch (moonPointError) {
+      console.error('重新发放月球分失败:', moonPointError);
+      // 不影响任务创建成功
     }
 
     // 更新提议状态
@@ -518,7 +571,8 @@ exports.approveTaskProposal = async (req, res) => {
     res.json({ 
       message: '已通过该任务提议并创建任务', 
       proposal,
-      createdTasks
+      createdTasks,
+      moonPoint: moonPointResult
     });
   } catch (error) {
     console.error('审核任务提议失败:', error);
@@ -559,7 +613,7 @@ exports.rejectTaskProposal = async (req, res) => {
 exports.updateTaskProposal = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, gender, difficulty } = req.body;
+    const { title, description, gender, difficulty, suggestedTime, items } = req.body;
 
     const proposal = await TaskProposal.findByPk(id);
     if (!proposal) {
@@ -579,12 +633,33 @@ exports.updateTaskProposal = async (req, res) => {
       title: title.trim(),
       description: description.trim(),
       gender: gender || proposal.gender,
-      difficulty: difficulty || proposal.difficulty
+      difficulty: difficulty || proposal.difficulty,
+      suggestedTime: suggestedTime !== undefined ? suggestedTime : proposal.suggestedTime,
+      items: items !== undefined ? items : proposal.items
     });
 
     res.json({ message: '任务提议已更新', proposal });
   } catch (error) {
     console.error('更新任务提议失败:', error);
     res.status(500).json({ message: '更新失败', error: error.message });
+  }
+};
+
+// 删除任务提议
+exports.deleteTaskProposal = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const proposal = await TaskProposal.findByPk(id);
+    if (!proposal) {
+      return res.status(404).json({ message: '任务提议不存在' });
+    }
+
+    await proposal.destroy();
+
+    res.json({ message: '任务提议已删除' });
+  } catch (error) {
+    console.error('删除任务提议失败:', error);
+    res.status(500).json({ message: '删除失败', error: error.message });
   }
 };

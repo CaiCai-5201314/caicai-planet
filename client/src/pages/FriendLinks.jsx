@@ -55,9 +55,12 @@ function FriendLinks() {
                 >
                   <div className="flex items-center space-x-4 mb-4">
                     <img
-                      src={link.avatar || '/uploads/avatars/default.png'}
+                      src={(link.avatar && link.avatar.length > 0 && link.avatar !== '/uploads/avatars/default.png') ? link.avatar : '/moren.png'}
                       alt={link.name}
                       className="w-16 h-16 rounded-lg object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                        e.target.src = '/moren.png';
+                      }}
                     />
                     <div>
                       <h3 className="font-semibold text-lg text-gray-900 group-hover:text-planet-purple transition-colors">

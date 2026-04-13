@@ -135,17 +135,30 @@ const authorizationController = {
   getSubAccounts: async (req, res) => {
     try {
       const parentId = req.user.id;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const offset = (page - 1) * limit;
 
-      const subAccounts = await User.findAll({
+      const { count, rows } = await User.findAndCountAll({
         where: {
           parent_account_id: parentId,
           is_sub_account: true
         },
-        attributes: ['id', 'uid', 'username', 'email', 'nickname', 'role', 'status', 'permissions', 'created_at']
+        attributes: ['id', 'uid', 'username', 'email', 'nickname', 'role', 'status', 'permissions', 'created_at'],
+        limit,
+        offset
       });
 
+      const totalPages = Math.ceil(count / limit);
+
       res.json({
-        subAccounts
+        subAccounts: rows,
+        pagination: {
+          page,
+          limit,
+          total: count,
+          totalPages
+        }
       });
     } catch (error) {
       logger.error('获取子权限账号列表错误', { error: error.message, stack: error.stack });

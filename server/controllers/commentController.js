@@ -22,7 +22,7 @@ const commentController = {
         {
           model: User,
           as: 'user',
-          attributes: ['id', 'username', 'nickname', 'avatar']
+          attributes: ['id', 'uid', 'username', 'nickname', 'avatar', 'exp']
         },
         {
           model: Comment,
@@ -33,7 +33,7 @@ const commentController = {
             {
               model: User,
               as: 'user',
-              attributes: ['id', 'username', 'nickname', 'avatar']
+              attributes: ['id', 'uid', 'username', 'nickname', 'avatar', 'exp']
             }
           ]
         }

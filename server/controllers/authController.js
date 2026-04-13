@@ -1,4 +1,4 @@
-const { User } = require('../models');
+const { User, CheckIn, ExpLog } = require('../models');
 const { generateToken, verifyToken } = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/password');
 const { validationResult } = require('express-validator');
@@ -56,19 +56,37 @@ const authController = {
       // 生成唯一的5位数字UID
       const uid = await generateUniqueUid();
 
+      // 获取用户的IP地址
+      console.log('=== 调试IP地址获取 ===');
+      console.log('req.ip:', req.ip);
+      console.log('req.connection?.remoteAddress:', req.connection?.remoteAddress);
+      console.log('req.socket?.remoteAddress:', req.socket?.remoteAddress);
+      console.log('req.headers:', req.headers);
+      console.log('req.headers[\'x-forwarded-for\']:', req.headers['x-forwarded-for']);
+      
+      let registerIp = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
+      if (req.headers['x-forwarded-for']) {
+        registerIp = req.headers['x-forwarded-for'].split(',')[0].trim();
+      }
+      
+      console.log('最终获取到的IP地址:', registerIp);
+      console.log('=== 调试结束 ===');
+
       const user = await User.create({
         uid,
         username,
         email,
         password: hashedPassword,
-        nickname: nickname || username
+        nickname: `用户${uid}`,
+        register_ip: registerIp
       });
 
+      const isAdmin = user.role === 'admin';
       const token = generateToken({
         id: user.id,
         username: user.username,
         role: user.role
-      });
+      }, isAdmin);
 
       res.status(201).json({
         message: '注册成功',
@@ -140,13 +158,153 @@ const authController = {
 
       await user.update({ last_login: new Date() });
 
+      // 登录赠送10经验值（每天仅赠送一次）
+      let expBonusResult = null;
+      try {
+        // 使用本地时间获取今天的日期，解决时区问题
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const todayStart = new Date(localToday + 'T00:00:00');
+        const todayEnd = new Date(localToday + 'T23:59:59');
+        
+        // 检查今天是否已经赠送过登录经验值
+        const existingExpLog = await ExpLog.findOne({
+          where: {
+            user_id: user.id,
+            reason: '每日登录奖励',
+            created_at: {
+              [Op.gte]: todayStart,
+              [Op.lte]: todayEnd
+            }
+          }
+        });
+
+        if (!existingExpLog) {
+          // 赠送10经验值
+          const expBefore = user.exp || 0;
+          const expAfter = expBefore + 10;
+          
+          // 更新用户经验值
+          await user.update({ exp: expAfter });
+          
+          // 记录经验值日志
+          await ExpLog.create({
+            user_id: user.id,
+            exp_change: 10,
+            exp_before: expBefore,
+            exp_after: expAfter,
+            reason: '每日登录奖励',
+            reason_type: 'login'
+          });
+
+          expBonusResult = {
+            success: true,
+            exp_change: 10,
+            exp_before: expBefore,
+            exp_after: expAfter
+          };
+        } else {
+          expBonusResult = {
+            success: false,
+            message: '今日已领取登录奖励'
+          };
+        }
+      } catch (expError) {
+        logger.error('赠送登录经验值错误', { error: expError.message, userId: user.id });
+        expBonusResult = {
+          success: false,
+          message: '经验值赠送失败'
+        };
+      }
+
+      const isAdmin = user.role === 'admin';
       const token = generateToken({
         id: user.id,
         username: user.username,
         role: user.role
-      });
+      }, isAdmin);
+
+      // 更新用户的当前token，实现单设备登录限制
+      console.log('准备更新current_token:', token);
+      try {
+        await user.update({ current_token: token });
+        console.log('更新current_token成功');
+        logger.info('更新current_token成功', { username: user.username, userId: user.id });
+      } catch (updateError) {
+        console.log('更新current_token失败:', updateError.message);
+        logger.error('更新current_token失败', { error: updateError.message, userId: user.id });
+      }
 
       logger.info('登录成功', { username: user.username, userId: user.id });
+
+      // 检查并执行自动打卡
+      let checkInResult = null;
+      try {
+        // 使用本地时间获取今天的日期，解决时区问题
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const existingCheckIn = await CheckIn.findOne({
+          where: {
+            user_id: user.id,
+            check_in_date: localToday
+          }
+        });
+
+        if (!existingCheckIn) {
+          // 获取用户IP和用户代理
+          const ipAddress = req.ip || req.connection?.remoteAddress;
+          const userAgent = req.get('user-agent');
+
+          // 创建打卡记录
+          const checkIn = await CheckIn.create({
+            user_id: user.id,
+            check_in_date: localToday,
+            check_in_time: new Date(),
+            status: 'success',
+            ip_address: ipAddress,
+            user_agent: userAgent
+          });
+
+          // 集成月球分规则系统 - 申请/发放月球分
+          let moonPointResult = null;
+          try {
+            const { applyMoonPoints } = require('../services/moonPointService');
+            moonPointResult = await applyMoonPoints(user.id, 'check_in', checkIn.id);
+          } catch (moonPointError) {
+            logger.error('发放月球分失败:', moonPointError);
+            // 不影响打卡成功，只是月球分发放失败
+          }
+
+          // 不管是否收到过提醒，都显示打卡成功
+          await user.update({ last_checkin_reminder: localToday });
+          
+          checkInResult = {
+            success: true,
+            checkIn: checkIn.toJSON(),
+            moonPoint: moonPointResult
+          };
+        } else {
+          // 不管是否收到过提醒，都显示已经打卡
+          await user.update({ last_checkin_reminder: localToday });
+          
+          checkInResult = {
+            success: false,
+            message: '今天已经打卡过了'
+          };
+        }
+      } catch (checkInError) {
+        logger.error('自动打卡错误', { error: checkInError.message, userId: user.id });
+        // 即使打卡失败，也显示错误信息
+        // 使用本地时间获取今天的日期
+        const today = new Date();
+        const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        await user.update({ last_checkin_reminder: localToday });
+        
+        checkInResult = {
+          success: false,
+          message: '打卡失败'
+        };
+      }
 
       res.json({
         message: '登录成功',
@@ -160,10 +318,12 @@ const authController = {
           avatar: user.avatar,
           role: user.role,
           status: user.status,
-          permissions: user.permissions,
           bio: user.bio,
-          level: user.level
-        }
+          level: user.level,
+          exp: user.exp
+        },
+        checkIn: checkInResult,
+        expBonus: expBonusResult
       });
     } catch (error) {
       logger.error('登录错误', { error: error.message, stack: error.stack });
@@ -199,15 +359,20 @@ const authController = {
   updateProfile: async (req, res) => {
     try {
       const { nickname, email, verificationCode, bio, website, github, weibo, cover_style } = req.body;
-      const user = req.user;
+      const userId = req.user.id;
 
       // 如果邮箱变更，需要验证验证码
-      if (email && email !== user.email) {
+      if (email && email !== req.user.email) {
         const { verifyCode } = require('../utils/verificationCode');
         const verificationResult = verifyCode(email, verificationCode);
         if (!verificationResult.valid) {
           return res.status(400).json({ message: verificationResult.message });
         }
+      }
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: '用户不存在' });
       }
 
       await user.update({
@@ -245,7 +410,12 @@ const authController = {
   changePassword: async (req, res) => {
     try {
       const { oldPassword, newPassword } = req.body;
-      const user = req.user;
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: '用户不存在' });
+      }
 
       // 验证旧密码
       const isPasswordValid = await comparePassword(oldPassword, user.password);
@@ -268,7 +438,12 @@ const authController = {
   updateUsername: async (req, res) => {
     try {
       const { username } = req.body;
-      const user = req.user;
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: '用户不存在' });
+      }
 
       // 检查用户名是否已存在
       const existingUser = await User.findOne({ where: { username } });
@@ -303,7 +478,12 @@ const authController = {
   updateEmail: async (req, res) => {
     try {
       const { email, verificationCode } = req.body;
-      const user = req.user;
+      const userId = req.user.id;
+
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(404).json({ message: '用户不存在' });
+      }
 
       // 验证验证码
       const { verifyCode } = require('../utils/verificationCode');
@@ -395,6 +575,36 @@ const authController = {
     } catch (error) {
       logger.error('重置密码错误', { error: error.message, stack: error.stack });
       res.status(500).json({ message: '重置密码失败' });
+    }
+  },
+
+  // 注销账号
+  deleteAccount: async (req, res) => {
+    try {
+      console.log('注销账号请求接收');
+      console.log('请求用户:', req.user);
+      
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      console.log('用户ID:', userId);
+      console.log('用户角色:', userRole);
+
+      // 禁止管理员注销账号
+      if (userRole === 'admin') {
+        console.log('管理员账号不能注销');
+        return res.status(403).json({ message: '管理员账号不能注销' });
+      }
+
+      // 使用User模型来删除用户，而不是使用req.user.destroy()方法
+      await User.destroy({ where: { id: userId } });
+
+      logger.info('账号注销成功', { username: req.user.username, userId: userId });
+
+      res.json({ message: '账号注销成功' });
+    } catch (error) {
+      logger.error('注销账号错误', { error: error.message, stack: error.stack });
+      res.status(500).json({ message: '注销账号失败' });
     }
   }
 };

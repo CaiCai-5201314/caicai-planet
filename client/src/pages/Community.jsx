@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart, FiStar } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useAuthStore } from '../store/authStore';
 
@@ -15,6 +15,29 @@ export default function Community() {
   const [activeCategory, setActiveCategory] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 根据经验值计算等级
+  const calculateLevel = (exp) => {
+    if (!exp) return 1;
+    if (exp >= 10000) return 10;
+    if (exp >= 6400) return 9;
+    if (exp >= 3900) return 8;
+    if (exp >= 2300) return 7;
+    if (exp >= 1300) return 6;
+    if (exp >= 700) return 5;
+    if (exp >= 350) return 4;
+    if (exp >= 150) return 3;
+    if (exp >= 50) return 2;
+    return 1;
+  };
+
+  // 获取等级对应的昵称颜色
+  const getNicknameColor = (level) => {
+    if (level >= 10) return '#f59e0b'; // 金色
+    if (level >= 9) return '#ef4444'; // 红色
+    if (level >= 5) return '#8b5cf6'; // 紫色
+    return '#111827'; // 黑色
+  };
 
   useEffect(() => {
     fetchPosts();
@@ -53,29 +76,29 @@ export default function Community() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">社区</h1>
-            <p className="text-gray-600">发现有趣的文章，参与讨论交流</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
+            <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-8">
             <div className="lg:w-3/4">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-4 mb-6">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <form onSubmit={handleSearch} className="flex-1">
                     <div className="relative">
-                      <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="搜索文章..."
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
                       />
                     </div>
                   </form>
@@ -86,7 +109,7 @@ export default function Community() {
                       className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
                         sortBy === 'newest'
                           ? 'bg-planet-purple text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
                       <FiClock size={18} />
@@ -97,7 +120,7 @@ export default function Community() {
                       className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
                         sortBy === 'popular'
                           ? 'bg-planet-purple text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
                       <FiTrendingUp size={18} />
@@ -108,7 +131,7 @@ export default function Community() {
                       className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-colors ${
                         sortBy === 'most_liked'
                           ? 'bg-planet-purple text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
                       <FiHeart size={18} />
@@ -123,7 +146,7 @@ export default function Community() {
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                       activeCategory === ''
                         ? 'bg-planet-purple text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     全部
@@ -135,7 +158,7 @@ export default function Community() {
                       className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                         activeCategory === category.id.toString()
                           ? 'bg-planet-purple text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                     >
                       {category.name}
@@ -149,18 +172,18 @@ export default function Community() {
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-planet-purple" />
                 </div>
               ) : posts.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
                   <div className="text-6xl mb-4">📭</div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">暂无文章</h3>
-                  <p className="text-gray-600">还没有发布任何文章</p>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">暂无文章</h3>
+                  <p className="text-gray-600 dark:text-gray-400">还没有发布任何文章</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {posts.map((post) => (
                     <article
                       key={post.id}
-                      className={`bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-lg transition-shadow ${
-                        post.is_pinned ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-gray-100'
+                      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border overflow-hidden hover:shadow-lg transition-shadow ${
+                        post.is_pinned ? 'border-yellow-400 ring-2 ring-yellow-400/30' : 'border-gray-100 dark:border-gray-700'
                       }`}
                     >
                       <Link to={`/post/${post.id}`}>
@@ -173,16 +196,25 @@ export default function Community() {
                               </div>
                             )}
                             <img
-                              src={post.author?.avatar || '/uploads/avatars/default.png'}
+                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
                               alt={post.author?.nickname || post.author?.username}
                               className="w-10 h-10 rounded-full object-cover"
+                              onError={(e) => {
+                                e.target.src = '/moren.png';
+                              }}
                             />
                             <div>
-                              <div className="font-medium text-gray-900">
+                              <div 
+                                className="font-medium"
+                                style={{ 
+                                  color: getNicknameColor(calculateLevel(post.author?.exp)),
+                                  textShadow: calculateLevel(post.author?.exp) >= 10 ? '0 0 10px rgba(245, 158, 11, 0.5)' : 'none'
+                                }}
+                              >
                                 {post.author?.nickname || post.author?.username}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: zhCN })}
+                              <div className="text-sm text-gray-500 dark:text-gray-400">
+                                {format(new Date(post.created_at), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN })}
                               </div>
                             </div>
                             {post.category && (
@@ -192,11 +224,11 @@ export default function Community() {
                             )}
                           </div>
 
-                          <h2 className="text-xl font-bold text-gray-900 mb-2 hover:text-planet-purple transition-colors flex items-center gap-2">
+                          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2 hover:text-planet-purple transition-colors flex items-center gap-2">
                             {post.title}
                           </h2>
                           
-                          <p className="text-gray-600 mb-4 line-clamp-2">
+                          <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
                             {post.summary}
                           </p>
 
@@ -208,7 +240,7 @@ export default function Community() {
                             />
                           )}
 
-                          <div className="flex items-center space-x-6 text-sm text-gray-500">
+                          <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
                             <span className="flex items-center space-x-1">
                               <FiHeart size={16} />
                               <span>{post.like_count}</span>

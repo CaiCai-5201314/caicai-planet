@@ -1,8 +1,16 @@
 import axios from 'axios';
-import { useAuthStore } from '../store/authStore';
+
+// 全局变量，用于跟踪是否是主动退出登录
+let isManualLogout = false;
+
+// 导出函数来设置 isManualLogout 变量
+export const setManualLogout = (value) => {
+  isManualLogout = value;
+};
 
 const api = axios.create({
-  baseURL: '/api'
+  baseURL: 'http://localhost:3002/api',
+  withCredentials: true
 });
 
 api.interceptors.request.use(
@@ -13,7 +21,12 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log('API请求头:', config.headers);
+    
+    // 如果请求体是FormData，不要设置Content-Type头
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     return config;
   },
   (error) => {
@@ -22,13 +35,26 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
-    if (error.response?.status === 401) {
+    // 检查是否是登录请求失败，如果是，不要处理
+    const isLoginRequest = error.config?.url === '/auth/login';
+    
+    // 检查是否在管理员后台
+    const isAdminPage = window.location.pathname.startsWith('/admin-caicai0304');
+    
+    // 只有在非登录请求、非管理员页面、且不是主动退出的情况下，才处理401错误
+    if (error.response?.status === 401 && !isLoginRequest && !isAdminPage && !isManualLogout) {
+      // 清除token和用户信息
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // 不再自动跳转到登录页，让各个组件自己处理
+      
+      // 直接跳转到登录页面，不显示提示
+      window.location.href = '/login';
     }
+    
     return Promise.reject(error);
   }
 );

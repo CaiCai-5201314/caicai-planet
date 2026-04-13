@@ -31,20 +31,33 @@ exports.createAnnouncement = async (req, res) => {
 // 获取公告列表
 exports.getAnnouncements = async (req, res) => {
   try {
-    const { status, level } = req.query;
+    const { status, level, page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
     
     const where = {};
     if (status) where.status = status;
     if (level) where.level = level;
     
-    const announcements = await Announcement.findAll({
+    const { count, rows } = await Announcement.findAndCountAll({
       where,
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
+      limit: limitNum,
+      offset
     });
+    
+    const totalPages = Math.ceil(count / limitNum);
     
     res.status(200).json({ 
       success: true,
-      data: announcements 
+      announcements: rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: count,
+        totalPages
+      }
     });
   } catch (error) {
     console.error('获取公告列表失败:', error);

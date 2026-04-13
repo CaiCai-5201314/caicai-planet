@@ -4,26 +4,38 @@ const { Op } = Sequelize;
 const friendLinkController = {
   getFriendLinks: async (req, res) => {
     try {
-      const { category, status = 'approved' } = req.query;
+      const { page = 1, limit = 20, status, category } = req.query;
+      const offset = (page - 1) * limit;
 
-      const where = { status };
-      if (category) {
-        where.category = category;
-      }
+      const where = {
+        status: 'approved' // 只返回已通过审核的友链
+      };
+      if (status) where.status = status;
+      if (category) where.category = category;
 
-      const friendLinks = await FriendLink.findAll({
+      const { count, rows: friendLinks } = await FriendLink.findAndCountAll({
         where,
         include: [
           {
             model: User,
             as: 'user',
-            attributes: ['id', 'username', 'nickname', 'avatar']
+            attributes: ['id', 'username', 'nickname']
           }
         ],
-        order: [['sort_order', 'ASC'], ['created_at', 'DESC']]
+        order: [['created_at', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(offset)
       });
 
-      res.json({ friendLinks });
+      res.json({
+        friendLinks,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          totalPages: Math.ceil(count / limit)
+        }
+      });
     } catch (error) {
       console.error('获取友链错误:', error);
       res.status(500).json({ message: '获取友链失败' });
@@ -54,7 +66,7 @@ const friendLinkController = {
         description,
         category: category || 'other',
         reciprocal_url,
-        user_id: req.user ? req.user.id : null,
+        user_id: req.user ? (req.user.id || null) : null,
         status: 'pending'
       });
 

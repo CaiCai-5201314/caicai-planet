@@ -12,11 +12,65 @@
   }
   
   body {
-    @apply font-sans antialiased text-gray-900 bg-white;
+    @apply font-sans antialiased text-gray-900 bg-white dark:text-gray-100 dark:bg-gray-900 transition-colors duration-300;
+  }
+  
+  /* 移动端响应式优化 */
+  @media (max-width: 768px) {
+    body {
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+  
+  /* 确保图片在移动端不溢出 */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* 表格响应式优化 */
+  .table-container {
+    @apply overflow-x-auto rounded-lg;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
 @layer components {
+  /* 暗色模式样式 */
+  .dark {
+    @apply bg-gray-900 text-gray-100;
+  }
+  
+  .dark .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  
+  .dark .input-field {
+    @apply bg-gray-800 border-gray-700 text-gray-100;
+  }
+  
+  .dark .nav-link {
+    @apply text-gray-300 hover:text-white;
+  }
+  
+  .dark .nav-link-active {
+    @apply text-white;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-gray-800 text-gray-300 border-gray-700 hover:border-planet-purple hover:text-planet-purple;
+  }
+  
+  .dark .gradient-bg {
+    @apply bg-opacity-20;
+  }
+  
+  .dark .glass-effect {
+    @apply bg-gray-800/10 border-gray-700/20;
+  }
+  
+  /* 渐变背景动画 */
   .gradient-bg {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
     background-size: 400% 400%;
@@ -29,10 +83,12 @@
     100% { background-position: 0% 50%; }
   }
   
+  /* 玻璃态效果 */
   .glass-effect {
     @apply bg-white/10 backdrop-blur-md border border-white/20;
   }
   
+  /* 按钮样式 */
   .btn-primary {
     @apply px-6 py-2.5 bg-gradient-to-r from-planet-purple to-planet-pink text-white font-medium rounded-full 
            hover:shadow-lg hover:shadow-planet-purple/30 transition-all duration-300 transform hover:-translate-y-0.5;
@@ -43,16 +99,19 @@
            hover:border-planet-purple hover:text-planet-purple transition-all duration-300;
   }
   
+  /* 卡片样式 */
   .card {
     @apply bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden
            hover:shadow-lg transition-shadow duration-300;
   }
   
+  /* 输入框样式 */
   .input-field {
     @apply w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-planet-purple 
            focus:ring-2 focus:ring-planet-purple/20 outline-none transition-all duration-200;
   }
   
+  /* 导航链接样式 */
   .nav-link {
     @apply text-white/80 hover:text-white font-medium transition-colors duration-200
            relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 
@@ -66,10 +125,12 @@
 }
 
 @layer utilities {
+  /* 渐变文字 */
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-planet-purple to-planet-pink;
   }
   
+  /* 隐藏滚动条 */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

@@ -1,6 +1,4 @@
-const { DataTypes } = require('sequelize');
-
-module.exports = (sequelize) => {
+module.exports = (sequelize, DataTypes) => {
   const ErrorType = sequelize.define('ErrorType', {
     id: {
       type: DataTypes.INTEGER,

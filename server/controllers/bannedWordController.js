@@ -26,11 +26,16 @@ const bannedWordController = {
         order: [['createdAt', 'DESC']]
       });
 
+      const totalPages = Math.ceil(count / parseInt(limit));
+
       res.json({
         words: rows,
-        total: count,
-        page: parseInt(page),
-        limit: parseInt(limit)
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: count,
+          totalPages
+        }
       });
     } catch (error) {
       console.error('获取违禁词列表错误:', error);
