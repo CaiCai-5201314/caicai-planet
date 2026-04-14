@@ -5,7 +5,7 @@ import {
   FiTrendingUp, FiActivity, FiCalendar, FiMoreVertical, FiEdit2,
   FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX, FiTrash2,
   FiCamera, FiSave, FiCheck, FiAlertCircle, FiSettings, FiShield, FiAlertTriangle,
-  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon
+  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar
 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';

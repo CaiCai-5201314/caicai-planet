@@ -13,10 +13,20 @@ const api = axios.create({
   withCredentials: true
 });
 
+// 从cookie中获取token的辅助函数
+const getTokenFromCookie = () => {
+  const cookie = document.cookie;
+  const tokenMatch = cookie.match(/token=([^;]+)/);
+  return tokenMatch ? tokenMatch[1] : null;
+};
+
 api.interceptors.request.use(
   (config) => {
-    // 从localStorage中获取token
-    const token = localStorage.getItem('token');
+    // 从localStorage中获取token，如果没有则从cookie中获取
+    let token = localStorage.getItem('token');
+    if (!token) {
+      token = getTokenFromCookie();
+    }
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

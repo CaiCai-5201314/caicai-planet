@@ -35,6 +35,9 @@ const { logOperation } = require('./middleware/auth');
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+// 信任代理，用于在云服务器环境中获取真实IP
+app.set('trust proxy', true);
+
 // 导入分享控制器
 const shareController = require('./controllers/shareController');
 
@@ -45,6 +48,16 @@ const globalLimiter = rateLimit({
   message: { message: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
   legacyHeaders: false,
+  // 配置keyGenerator以正确处理代理
+  keyGenerator: (req) => {
+    // 从X-Forwarded-For头获取真实IP
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+              req.ip || 
+              req.connection?.remoteAddress || 
+              req.socket?.remoteAddress || 
+              'unknown';
+    return ip;
+  }
 });
 
 // 登录/注册请求限制
@@ -53,6 +66,16 @@ const authLimiter = rateLimit({
   max: 10, // 每个IP最多10次登录尝试
   message: { message: '登录尝试次数过多，请15分钟后再试' },
   skipSuccessfulRequests: true, // 成功的请求不计数
+  // 配置keyGenerator以正确处理代理
+  keyGenerator: (req) => {
+    // 从X-Forwarded-For头获取真实IP
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+              req.ip || 
+              req.connection?.remoteAddress || 
+              req.socket?.remoteAddress || 
+              'unknown';
+    return ip;
+  }
 });
 
 // 配置 Helmet 安全头

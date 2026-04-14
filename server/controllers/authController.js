@@ -252,7 +252,10 @@ const authController = {
 
         if (!existingCheckIn) {
           // 获取用户IP和用户代理
-          const ipAddress = req.ip || req.connection?.remoteAddress;
+          let ipAddress = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress;
+          if (req.headers['x-forwarded-for']) {
+            ipAddress = req.headers['x-forwarded-for'].split(',')[0].trim();
+          }
           const userAgent = req.get('user-agent');
 
           // 创建打卡记录

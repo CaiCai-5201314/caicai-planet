@@ -1,6 +1,7 @@
 const db = require('../models');
 const User = db.User;
 const MoonPointLog = db.MoonPointLog;
+const Op = db.Sequelize.Op;
 
 // 获取所有用户月球分信息（管理员）
 exports.getAllUsersMoonPoints = async (req, res) => {
@@ -10,10 +11,10 @@ exports.getAllUsersMoonPoints = async (req, res) => {
 
     const where = {};
     if (search) {
-      where[db.Sequelize.Op.or] = [
-        { username: { [db.Sequelize.Op.like]: `%${search}%` } },
-        { nickname: { [db.Sequelize.Op.like]: `%${search}%` } },
-        { uid: { [db.Sequelize.Op.like]: `%${search}%` } }
+      where[Op.or] = [
+        { username: { [Op.like]: `%${search}%` } },
+        { nickname: { [Op.like]: `%${search}%` } },
+        { uid: { [Op.like]: `%${search}%` } }
       ];
     }
 
