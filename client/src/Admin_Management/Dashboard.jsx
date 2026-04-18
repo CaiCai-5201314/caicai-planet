@@ -11,6 +11,8 @@ import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import SiteConfig from './SiteConfig';
+import AdvertisementManagement from './AdvertisementManagement';
+import ErrorLogManagement from './ErrorLogManagement';
 
 import TaskCenterManagement from './TaskCenterManagement';
 import TaskTypeManagement from './TaskTypeManagement';
@@ -38,11 +40,6 @@ function FriendLinkManagement() {
     reciprocal_url: ''
   });
   const [showShareModal, setShowShareModal] = useState(false);
-  const [shareForm, setShareForm] = useState({
-    password: '',
-    limit: '',
-    expiresAt: ''
-  });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -151,10 +148,7 @@ function FriendLinkManagement() {
   const handleGenerateShareLink = async () => {
     try {
       const response = await api.post(`/admin/friend-links/${currentLink.id}/share`, {
-        friendLinkId: currentLink.id,
-        password: shareForm.password,
-        limit: shareForm.limit ? parseInt(shareForm.limit) : null,
-        expiresAt: shareForm.expiresAt
+        friendLinkId: currentLink.id
       });
       toast.success('外链接生成成功');
       setShowShareModal(false);
@@ -182,11 +176,6 @@ function FriendLinkManagement() {
   // 打开分享模态框
   const openShareModal = (link) => {
     setCurrentLink(link);
-    setShareForm({
-      password: '',
-      limit: '',
-      expiresAt: ''
-    });
     setShowShareModal(true);
   };
 
@@ -686,36 +675,6 @@ function FriendLinkManagement() {
                   value={currentLink.name}
                   readOnly
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">外链接密码（可选）</label>
-                <input
-                  type="text"
-                  value={shareForm.password}
-                  onChange={(e) => setShareForm({ ...shareForm, password: e.target.value })}
-                  placeholder="设置外链接密码"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">点击次数限制（可选）</label>
-                <input
-                  type="number"
-                  value={shareForm.limit}
-                  onChange={(e) => setShareForm({ ...shareForm, limit: e.target.value })}
-                  placeholder="设置点击次数限制，留空表示无限制"
-                  min="1"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">有效期（可选）</label>
-                <input
-                  type="datetime-local"
-                  value={shareForm.expiresAt}
-                  onChange={(e) => setShareForm({ ...shareForm, expiresAt: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
                 />
               </div>
               <div className="flex justify-end space-x-3 pt-4">
@@ -1945,6 +1904,8 @@ function AdminLayout({ children }) {
       },
       { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
       { path: '/admin-caicai0304/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
+      { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
+      { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
       { path: '/admin-caicai0304/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
     ];
 
@@ -1999,7 +1960,7 @@ function AdminLayout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
       {/* 移动端遮罩层 */}
       {sidebarOpen && (
         <div 
@@ -2009,7 +1970,7 @@ function AdminLayout({ children }) {
       )}
 
       {/* 侧边栏 */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:block ${
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:block ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-6">
@@ -2108,36 +2069,12 @@ function AdminLayout({ children }) {
       </aside>
 
       {/* 主内容区域 */}
-      <main className="flex-1 lg:ml-0">
-        <header className="bg-white border-b border-gray-200 px-4 py-4 lg:px-8 sticky top-0 z-30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
-              >
-                <FiMoreVertical size={24} />
-              </button>
-              <h1 className="text-xl font-bold text-gray-900">菜菜星球管理后台</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600 hidden sm:block">{user?.nickname || user?.username}</span>
-              <img
-                src={(user?.avatar && user.avatar.length > 0 && user.avatar !== '/uploads/avatars/default.png') ? user.avatar : '/moren.png'}
-                alt={user?.nickname || user?.username}
-                className="w-10 h-10 rounded-full object-cover"
-                onError={(e) => {
-                  e.target.src = '/moren.png';
-                }}
-              />
-            </div>
-          </div>
-        </header>
-
-        <div className="p-4 lg:p-8">
+      <div className="flex-1 flex flex-col lg:ml-64">
+        {/* 内容区域 */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           {children}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -2636,10 +2573,14 @@ function UserManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('DESC');
+  const [lastLoginFrom, setLastLoginFrom] = useState('');
+  const [lastLoginTo, setLastLoginTo] = useState('');
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, searchTerm, statusFilter, roleFilter]);
+  }, [currentPage, searchTerm, statusFilter, roleFilter, sortBy, sortOrder, lastLoginFrom, lastLoginTo]);
 
   const fetchUsers = async () => {
     try {
@@ -2656,6 +2597,18 @@ function UserManagement() {
       }
       if (roleFilter) {
         params.append('role', roleFilter);
+      }
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
+      }
+      if (lastLoginFrom) {
+        params.append('lastLoginFrom', lastLoginFrom);
+      }
+      if (lastLoginTo) {
+        params.append('lastLoginTo', lastLoginTo);
       }
       const response = await api.get(`/admin/users?${params.toString()}`);
       setUsers(response.data.users);
@@ -2796,13 +2749,13 @@ function UserManagement() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div className="flex flex-col">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <h2 className="text-2xl font-bold text-gray-900">用户管理</h2>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
             <input
               type="text"
@@ -2835,11 +2788,35 @@ function UserManagement() {
             </select>
           </div>
           <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="created_at">按注册时间</option>
+              <option value="last_login">按最后登录时间</option>
+            </select>
+          </div>
+          <div>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="DESC">降序</option>
+              <option value="ASC">升序</option>
+            </select>
+          </div>
+          <div>
             <button
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('');
                 setRoleFilter('');
+                setSortBy('created_at');
+                setSortOrder('DESC');
+                setLastLoginFrom('');
+                setLastLoginTo('');
                 setCurrentPage(1);
               }}
               className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -2848,176 +2825,209 @@ function UserManagement() {
             </button>
           </div>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <input
+              type="date"
+              placeholder="最后登录开始时间"
+              value={lastLoginFrom}
+              onChange={(e) => setLastLoginFrom(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            />
+          </div>
+          <div>
+            <input
+              type="date"
+              placeholder="最后登录结束时间"
+              value={lastLoginTo}
+              onChange={(e) => setLastLoginTo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-grow flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">用户信息</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">UID</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">角色</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">状态</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">注册时间</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">注册IP</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={(user.avatar && user.avatar.length > 0 && user.avatar !== '/uploads/avatars/default.png') ? user.avatar : '/moren.png'}
-                      alt={user.nickname || user.username}
-                      className="w-10 h-10 rounded-full object-cover"
-                      onError={(e) => {
-                        if (!e.target.dataset.errorHandled) {
-                          e.target.dataset.errorHandled = 'true';
-                          e.target.src = '/moren.png';
-                        }
-                      }}
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900">{user.nickname || user.username}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm font-mono text-gray-600">{user.uid}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {user.role === 'admin' ? '管理员' : '用户'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  {getStatusBadge(user)}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleString('zh-CN', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit'
-                    })}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-gray-500">
-                    {user.register_ip || '-'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
-                    {/* 编辑 */}
-                    <button
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="编辑"
-                    >
-                      <FiEdit2 size={18} />
-                    </button>
-
-                    {/* 激活/停用 */}
-                    <button
-                      onClick={() => handleToggleStatus(user.id, user.nickname || user.username, user.status)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.status === 'inactive' 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                      title={user.status === 'inactive' ? '激活用户' : '停用用户'}
-                    >
-                      {user.status === 'inactive' ? <FiCheck size={18} /> : <FiX size={18} />}
-                    </button>
-
-                    {/* 封禁/解封 */}
-                    <button
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsBanModalOpen(true);
-                      }}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.status === 'banned' 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-red-600 hover:bg-red-50'
-                      }`}
-                      title={user.status === 'banned' ? '解封' : '封禁'}
-                    >
-                      {user.status === 'banned' ? <FiUnlock size={18} /> : <FiLock size={18} />}
-                    </button>
-
-                    {/* 禁言/解除禁言 */}
-                    <button
-                      onClick={() => handleMuteUser(user.id, !user.is_muted)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.is_muted 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-orange-600 hover:bg-orange-50'
-                      }`}
-                      title={user.is_muted ? '解除禁言' : '禁言'}
-                    >
-                      {user.is_muted ? <FiVolume2 size={18} /> : <FiVolumeX size={18} />}
-                    </button>
-
-                    {/* 禁止/允许发布 */}
-                    <button
-                      onClick={() => handlePostBanUser(user.id, !user.is_post_banned)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.is_post_banned 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-yellow-600 hover:bg-yellow-50'
-                      }`}
-                      title={user.is_post_banned ? '允许发布' : '禁止发布'}
-                    >
-                      {user.is_post_banned ? <FiSend size={18} /> : <FiX size={18} />}
-                    </button>
-
-                    {/* 删除用户 */}
-                    <button
-                      onClick={() => handleDeleteUser(user.id, user.nickname || user.username)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="删除用户"
-                    >
-                      <FiTrash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+      <div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">用户信息</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">UID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">角色</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">注册时间</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最后登录</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">注册IP</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        
-        {!loading && users.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <FiUsers size={48} className="mx-auto mb-4" />
-            <p>没有找到用户</p>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={(user.avatar && user.avatar.length > 0 && user.avatar !== '/uploads/avatars/default.png') ? user.avatar : '/moren.png'}
+                        alt={user.nickname || user.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                        onError={(e) => {
+                          if (!e.target.dataset.errorHandled) {
+                            e.target.dataset.errorHandled = 'true';
+                            e.target.src = '/moren.png';
+                          }
+                        }}
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{user.nickname || user.username}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-mono text-gray-600">{user.uid}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {user.role === 'admin' ? '管理员' : '用户'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStatusBadge(user)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {new Date(user.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {user.last_login ? new Date(user.last_login).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {user.register_ip || '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-1">
+                      {/* 编辑 */}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="编辑"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+
+                      {/* 激活/停用 */}
+                      <button
+                        onClick={() => handleToggleStatus(user.id, user.nickname || user.username, user.status)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.status === 'inactive' 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                        title={user.status === 'inactive' ? '激活用户' : '停用用户'}
+                      >
+                        {user.status === 'inactive' ? <FiCheck size={16} /> : <FiX size={16} />}
+                      </button>
+
+                      {/* 封禁/解封 */}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsBanModalOpen(true);
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.status === 'banned' 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-red-600 hover:bg-red-50'
+                        }`}
+                        title={user.status === 'banned' ? '解封' : '封禁'}
+                      >
+                        {user.status === 'banned' ? <FiUnlock size={16} /> : <FiLock size={16} />}
+                      </button>
+
+                      {/* 禁言/解除禁言 */}
+                      <button
+                        onClick={() => handleMuteUser(user.id, !user.is_muted)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.is_muted 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-orange-600 hover:bg-orange-50'
+                        }`}
+                        title={user.is_muted ? '解除禁言' : '禁言'}
+                      >
+                        {user.is_muted ? <FiVolume2 size={16} /> : <FiVolumeX size={16} />}
+                      </button>
+
+                      {/* 禁止/允许发布 */}
+                      <button
+                        onClick={() => handlePostBanUser(user.id, !user.is_post_banned)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.is_post_banned 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-yellow-600 hover:bg-yellow-50'
+                        }`}
+                        title={user.is_post_banned ? '允许发布' : '禁止发布'}
+                      >
+                        {user.is_post_banned ? <FiSend size={16} /> : <FiX size={16} />}
+                      </button>
+
+                      {/* 删除用户 */}
+                      <button
+                        onClick={() => handleDeleteUser(user.id, user.nickname || user.username)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="删除用户"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           </div>
-        )}
+          
+          {!loading && users.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <FiUsers size={32} className="mx-auto mb-2" />
+              <p className="text-sm">没有找到用户</p>
+            </div>
+          )}
+        </div>
 
         {/* 分页 */}
         {!loading && (
-          <div className="px-6 py-6 border-t border-gray-100 flex items-center justify-center mt-auto">
-            <nav className="flex items-center space-x-2">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center justify-center">
+            <nav className="flex items-center space-x-1">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
               >
-                <FiChevronLeft size={16} className="mr-1" />
+                <FiChevronLeft size={14} className="mr-1" />
                 上一页
               </button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -3035,7 +3045,7 @@ function UserManagement() {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                    className={`px-3 py-1.5 rounded-md border text-sm ${currentPage === pageNum
                       ? 'bg-planet-purple text-white border-planet-purple'
                       : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
@@ -3047,10 +3057,10 @@ function UserManagement() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
               >
                 下一页
-                <FiChevronRight size={16} className="ml-1" />
+                <FiChevronRight size={14} className="ml-1" />
               </button>
             </nav>
           </div>
@@ -3538,11 +3548,13 @@ export default function AdminDashboard() {
         <Route path="/user-tasks" element={<ProtectedRoute requiredPermission="userTaskManagement"><UserTaskManagement /></ProtectedRoute>} />
 
         <Route path="/site-configs" element={<ProtectedRoute requiredPermission="siteConfig"><SiteConfig /></ProtectedRoute>} />
+        <Route path="/advertisements" element={<ProtectedRoute requiredPermission="siteConfig"><AdvertisementManagement /></ProtectedRoute>} />
         <Route path="/check-ins" element={<ProtectedRoute requiredPermission="checkInManagement"><CheckInManagement /></ProtectedRoute>} />
         <Route path="/moon-centers" element={<ProtectedRoute requiredPermission="moonCenterManagement"><MoonCenterManagement /></ProtectedRoute>} />
         <Route path="/moon-point-requests" element={<ProtectedRoute requiredPermission="moonPointRequestManagement"><MoonPointRequestManagement /></ProtectedRoute>} />
         <Route path="/moon-point-rules" element={<ProtectedRoute requiredPermission="moonPointRuleManagement"><MoonPointRuleManagement /></ProtectedRoute>} />
         <Route path="/exp-management" element={<ProtectedRoute requiredPermission="expManagement"><ExpManagement /></ProtectedRoute>} />
+        <Route path="/error-logs" element={<ProtectedRoute requiredPermission="errorLogManagement"><ErrorLogManagement /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );

@@ -52,7 +52,8 @@ export default function Navbar() {
   }, []);
 
   const fetchAnnouncements = useCallback(async () => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (isAuthenticated && token) {
       console.log('Fetching announcements...');
       const data = await announcementService.getActiveAnnouncements();
       console.log('Announcements data:', data);
@@ -65,7 +66,8 @@ export default function Navbar() {
   }, [isAuthenticated]);
 
   const fetchNotifications = useCallback(async () => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (isAuthenticated && token) {
       try {
         const response = await api.get('/notifications');
         const notificationList = response.data.notifications || [];
@@ -84,7 +86,8 @@ export default function Navbar() {
   }, [isAuthenticated]);
 
   const fetchUnreadNotifications = useCallback(async () => {
-    if (isAuthenticated) {
+    const token = localStorage.getItem('token');
+    if (isAuthenticated && token) {
       try {
         const response = await api.get('/notifications/unread-count');
         if (response.data && response.data.success) {
@@ -101,6 +104,9 @@ export default function Navbar() {
   }, [isAuthenticated, user]);
 
   const markNotificationAsRead = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
     try {
       await api.put(`/notifications/${id}/read`);
       setNotifications(prev => prev.map(notification => 
@@ -165,6 +171,9 @@ export default function Navbar() {
   };
 
   const handleNotificationClick = async (notification) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
     setCurrentNotification(notification);
     setIsNotificationModalOpen(true);
     setIsNotificationMenuOpen(false);
@@ -176,22 +185,23 @@ export default function Navbar() {
   };
 
   const handleMarkAsRead = async () => {
-    if (currentAnnouncement) {
-      console.log('Marking announcement as read:', currentAnnouncement.id);
-      const markResult = await announcementService.markAsRead(currentAnnouncement.id);
-      console.log('Mark as read result:', markResult);
-      // 重新获取公告列表，更新未读状态
-      const data = await announcementService.getActiveAnnouncements();
-      console.log('Updated announcements:', data);
-      setAnnouncements(data);
-      // 只有当有未读公告时才显示红点
-      const hasUnread = data.some(ann => !ann.is_read);
-      console.log('Has unread announcements:', hasUnread);
-      setHasAnnouncements(hasUnread);
-      setIsAnnouncementModalOpen(false);
-      // 关闭公告菜单，确保重新渲染
-      setIsAnnouncementMenuOpen(false);
-    }
+    const token = localStorage.getItem('token');
+    if (!token || !currentAnnouncement) return;
+    
+    console.log('Marking announcement as read:', currentAnnouncement.id);
+    const markResult = await announcementService.markAsRead(currentAnnouncement.id);
+    console.log('Mark as read result:', markResult);
+    // 重新获取公告列表，更新未读状态
+    const data = await announcementService.getActiveAnnouncements();
+    console.log('Updated announcements:', data);
+    setAnnouncements(data);
+    // 只有当有未读公告时才显示红点
+    const hasUnread = data.some(ann => !ann.is_read);
+    console.log('Has unread announcements:', hasUnread);
+    setHasAnnouncements(hasUnread);
+    setIsAnnouncementModalOpen(false);
+    // 关闭公告菜单，确保重新渲染
+    setIsAnnouncementMenuOpen(false);
   };
 
   // 公告菜单悬停处理
@@ -260,7 +270,7 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-8">
             {[...baseNavItems, ...(isAuthenticated ? authNavItems : [])].map((item) => (
               <Link
                 key={item.path}
@@ -289,7 +299,7 @@ export default function Navbar() {
                 )}
               </Link>
             ))}
-          </div>
+          </nav>
 
           <div className="hidden md:flex items-center space-x-4">
             {isAuthenticated ? (
@@ -421,7 +431,7 @@ export default function Navbar() {
                   >
                     <img
                       src={user?.avatar && user.avatar.length > 0 ? user.avatar : '/moren.png'}
-                      alt={user?.nickname || user?.username}
+                      alt={`${user?.nickname || user?.username}的头像`}
                       className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-md"
                       onError={(e) => {
                         if (!e.target.dataset.errorHandled) {
@@ -524,17 +534,17 @@ export default function Navbar() {
       </div>
 
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
+        <div className="md:hidden bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top duration-300">
           <div className="px-4 py-3 space-y-2">
             {[...baseNavItems, ...(isAuthenticated ? authNavItems : [])].map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  'block px-4 py-2 rounded-lg font-medium',
+                  'block px-4 py-3 rounded-lg font-medium transition-all duration-200',
                   location.pathname === item.path
                     ? 'bg-planet-purple/10 text-planet-purple'
-                    : 'text-gray-700 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800'
+                    : 'text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -542,37 +552,60 @@ export default function Navbar() {
               </Link>
             ))}
             {!isAuthenticated ? (
-              <div className="pt-2 space-y-2">
+              <div className="pt-3 space-y-3">
                 <Link
                   to="/login"
-                  className="block px-4 py-2 text-center text-gray-700 dark:text-white font-medium border border-gray-200 dark:border-gray-700 rounded-lg"
+                  className="block px-4 py-3 text-center text-gray-700 dark:text-white font-medium border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   登录
                 </Link>
                 <Link
                   to="/register"
-                  className="block px-4 py-2 text-center text-white font-medium bg-gradient-to-r from-planet-purple to-planet-pink rounded-lg"
+                  className="block px-4 py-3 text-center text-white font-medium bg-gradient-to-r from-planet-purple to-planet-pink rounded-lg hover:shadow-lg hover:shadow-planet-purple/30 transition-all duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   注册
                 </Link>
               </div>
             ) : (
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
                 <Link
                   to={`/profile/${user?.username}`}
-                  className="block px-4 py-2 text-gray-700 dark:text-white font-medium"
+                  className="block px-4 py-3 text-gray-700 dark:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   个人主页
                 </Link>
+                <Link
+                  to="/notifications"
+                  className="block px-4 py-3 text-gray-700 dark:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  通知
+                </Link>
+                <Link
+                  to="/settings"
+                  className="block px-4 py-3 text-gray-700 dark:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  设置
+                </Link>
+                {user?.role === 'admin' && (
+                  <Link
+                    to="/admin-caicai0304"
+                    className="block px-4 py-3 text-gray-700 dark:text-white font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    后台管理
+                  </Link>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="block w-full text-left px-4 py-2 text-red-600 dark:text-red-400 font-medium"
+                  className="block w-full text-left px-4 py-3 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all duration-200"
                 >
                   退出登录
                 </button>
@@ -638,7 +671,7 @@ export default function Navbar() {
                   {currentAnnouncement.title}
                 </h3>
               </div>
-              <div style={{ maxWidth: '100%', color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151' }}>
+              <div style={{ maxWidth: '100%', maxHeight: '400px', overflowY: 'auto', color: document.documentElement.classList.contains('dark') ? '#e5e7eb' : '#374151', paddingRight: '10px' }}>
                 <div dangerouslySetInnerHTML={{ __html: currentAnnouncement.content }} />
               </div>
               <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiLock, FiSave, FiTrash2, FiSun, FiMoon, FiX } from 'react-icons/fi';
+import { FiUser, FiLock, FiSave, FiTrash2, FiSun, FiMoon, FiX, FiArrowLeft } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
@@ -104,6 +104,15 @@ export default function Settings() {
       <div className="pt-24 pb-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-8">
+            <div className="flex items-center space-x-4 mb-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                <FiArrowLeft size={20} />
+                <span>返回</span>
+              </button>
+            </div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">设置</h1>
             <p className="text-gray-500 dark:text-gray-400">管理您的账号和偏好设置</p>
           </div>

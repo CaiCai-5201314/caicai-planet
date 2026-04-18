@@ -99,6 +99,11 @@ export const useAuthStore = create(
 
       setAdminUser: (userData) => {
         set({ user: userData, isAuthenticated: true });
+      },
+      
+      // 重置登录状态
+      resetAuth: () => {
+        set({ user: null, isAuthenticated: false, error: null });
       }
     }),
     {

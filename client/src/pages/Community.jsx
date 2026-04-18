@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart, FiStar } from 'react-icons/fi';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { FiSearch, FiFilter, FiTrendingUp, FiClock, FiHeart, FiStar, FiArrowLeft } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -9,12 +9,15 @@ import { useAuthStore } from '../store/authStore';
 
 export default function Community() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [posts, setPosts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [advertisement, setAdvertisement] = useState(null);
 
   // 根据经验值计算等级
   const calculateLevel = (exp) => {
@@ -42,7 +45,33 @@ export default function Community() {
   useEffect(() => {
     fetchPosts();
     fetchCategories();
+    fetchAdvertisement();
   }, [activeCategory, sortBy]);
+
+  const fetchAdvertisement = async () => {
+    try {
+      const response = await api.get('/advertisements/active', {
+        params: { 
+          position: 'community_sidebar',
+          preview: searchParams.get('preview_ads') === 'true'
+        }
+      });
+      if (response.data.advertisement) {
+        setAdvertisement(response.data.advertisement);
+      }
+    } catch (error) {
+      console.error('获取广告失败:', error);
+    }
+  };
+
+  const handleAdClick = async () => {
+    if (!advertisement) return;
+    try {
+      await api.post(`/advertisements/${advertisement.id}/click`);
+    } catch (error) {
+      console.error('记录广告点击失败:', error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -81,6 +110,15 @@ export default function Community() {
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
             <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>
@@ -288,6 +326,46 @@ export default function Community() {
                   >
                     立即发布
                   </Link>
+                </div>
+              )}
+
+              {/* 广告位 */}
+              {advertisement && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700">
+                  {advertisement.image_url ? (
+                    <a
+                      href={advertisement.link_url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={handleAdClick}
+                      className="block"
+                    >
+                      <img
+                        src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `http://localhost:3002${advertisement.image_url}`}
+                        alt={advertisement.title}
+                        className="w-full h-48 object-cover"
+                      />
+                      <div className="p-4">
+                        <h3 className="font-bold text-gray-900 dark:text-white mb-2">{advertisement.title}</h3>
+                        {advertisement.content && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{advertisement.content}</p>
+                        )}
+                      </div>
+                    </a>
+                  ) : (
+                    <a
+                      href={advertisement.link_url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={handleAdClick}
+                      className="block p-4"
+                    >
+                      <h3 className="font-bold text-gray-900 dark:text-white mb-2">{advertisement.title}</h3>
+                      {advertisement.content && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{advertisement.content}</p>
+                      )}
+                    </a>
+                  )}
                 </div>
               )}
             </div>

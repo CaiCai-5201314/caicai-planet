@@ -6,7 +6,7 @@ const { hashPassword } = require('../utils/password');
 const userAdminController = {
   getUsers: async (req, res) => {
     try {
-      const { page = 1, limit = 20, search, status, role } = req.query;
+      const { page = 1, limit = 20, search, status, role, sortBy, sortOrder, lastLoginFrom, lastLoginTo } = req.query;
       const offset = (page - 1) * limit;
 
       const where = {};
@@ -14,16 +14,37 @@ const userAdminController = {
         where[Op.or] = [
           { username: { [Op.like]: `%${search}%` } },
           { email: { [Op.like]: `%${search}%` } },
-          { nickname: { [Op.like]: `%${search}%` } }
+          { nickname: { [Op.like]: `%${search}%` } },
+          { register_ip: { [Op.like]: `%${search}%` } }
         ];
       }
       if (status) where.status = status;
       if (role) where.role = role;
+      
+      // 按最后登录时间筛选
+      if (lastLoginFrom) {
+        where.last_login = {
+          ...where.last_login,
+          [Op.gte]: new Date(lastLoginFrom)
+        };
+      }
+      if (lastLoginTo) {
+        where.last_login = {
+          ...where.last_login,
+          [Op.lte]: new Date(lastLoginTo)
+        };
+      }
+
+      // 排序
+      let order = [['created_at', 'DESC']];
+      if (sortBy && sortOrder) {
+        order = [[sortBy, sortOrder.toUpperCase()]];
+      }
 
       const { count, rows: users } = await User.findAndCountAll({
         where,
         attributes: { exclude: ['password'] },
-        order: [['created_at', 'DESC']],
+        order,
         limit: parseInt(limit),
         offset: parseInt(offset)
       });

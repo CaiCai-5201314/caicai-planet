@@ -17,7 +17,17 @@ function Footer() {
       { name: '微博', url: 'https://weibo.com', icon: 'weibo' },
       { name: '微信', url: '#', icon: 'wechat' }
     ],
-    footerContact: '如有任何问题或建议，欢迎联系我们'
+    footerContact: '如有任何问题或建议，欢迎联系我们',
+    footerBackgroundColor: '#1f2937',
+    footerTextColor: '#ffffff',
+    footerPaddingTop: '3rem',
+    footerPaddingBottom: '3rem',
+    footerShowLogo: 'true',
+    footerShowNavigation: 'true',
+    footerShowSocial: 'true',
+    footerShowContact: 'true',
+    footerShowCopyright: 'true',
+    footerLayout: 'grid'
   });
 
   useEffect(() => {
@@ -33,7 +43,17 @@ function Footer() {
           footerAbout: response.data.configs.footerAbout || configs.footerAbout,
           footerLinks: [],
           footerSocial: [],
-          footerContact: response.data.configs.footerContact || configs.footerContact
+          footerContact: response.data.configs.footerContact || configs.footerContact,
+          footerBackgroundColor: response.data.configs.footerBackgroundColor || configs.footerBackgroundColor,
+          footerTextColor: response.data.configs.footerTextColor || configs.footerTextColor,
+          footerPaddingTop: response.data.configs.footerPaddingTop || configs.footerPaddingTop,
+          footerPaddingBottom: response.data.configs.footerPaddingBottom || configs.footerPaddingBottom,
+          footerShowLogo: response.data.configs.footerShowLogo || configs.footerShowLogo,
+          footerShowNavigation: response.data.configs.footerShowNavigation || configs.footerShowNavigation,
+          footerShowSocial: response.data.configs.footerShowSocial || configs.footerShowSocial,
+          footerShowContact: response.data.configs.footerShowContact || configs.footerShowContact,
+          footerShowCopyright: response.data.configs.footerShowCopyright || configs.footerShowCopyright,
+          footerLayout: response.data.configs.footerLayout || configs.footerLayout
         };
 
         // 解析导航链接
@@ -68,64 +88,232 @@ function Footer() {
   };
 
   return (
-    <footer className="bg-gray-900 text-white py-12">
+    <footer 
+      style={{ 
+        backgroundColor: configs.footerBackgroundColor,
+        color: configs.footerTextColor,
+        paddingTop: configs.footerPaddingTop,
+        paddingBottom: configs.footerPaddingBottom
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
-                <span className="text-white font-bold">菜</span>
+        {/* 根据布局方式渲染不同的结构 */}
+        {configs.footerLayout === 'grid' && (
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {configs.footerShowLogo === 'true' && (
+              <div>
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+                    <span className="text-white font-bold">菜</span>
+                  </div>
+                  <span className="font-bold text-xl">菜菜星球</span>
+                </div>
+                <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm">
+                  {configs.footerAbout}
+                </p>
               </div>
-              <span className="font-bold text-xl">菜菜星球</span>
+            )}
+            
+            {configs.footerShowNavigation === 'true' && (
+              <div>
+                <h4 className="font-bold mb-4">导航</h4>
+                <ul className="space-y-2">
+                  {configs.footerLinks.map((link, index) => (
+                    <li key={index}>
+                      <Link 
+                        to={link.url} 
+                        style={{ color: `${configs.footerTextColor}80` }}
+                        className="hover:text-white transition-colors"
+                        target={link.url.startsWith('http') ? '_blank' : '_self'}
+                        rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {configs.footerShowSocial === 'true' && (
+              <div>
+                <h4 className="font-bold mb-4">社交链接</h4>
+                <ul className="space-y-2">
+                  {configs.footerSocial.map((social, index) => (
+                    <li key={index}>
+                      <a 
+                        href={social.url} 
+                        style={{ color: `${configs.footerTextColor}80` }}
+                        className="hover:text-white transition-colors"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {social.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {configs.footerShowContact === 'true' && (
+              <div>
+                <h4 className="font-bold mb-4">联系我们</h4>
+                <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm">
+                  {configs.footerContact}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {configs.footerLayout === 'flex' && (
+          <div className="flex flex-wrap justify-between items-start gap-8 mb-8">
+            {configs.footerShowLogo === 'true' && (
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+                    <span className="text-white font-bold">菜</span>
+                  </div>
+                  <span className="font-bold text-xl">菜菜星球</span>
+                </div>
+                <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm">
+                  {configs.footerAbout}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex flex-wrap gap-8">
+              {configs.footerShowNavigation === 'true' && (
+                <div>
+                  <h4 className="font-bold mb-4">导航</h4>
+                  <ul className="space-y-2">
+                    {configs.footerLinks.map((link, index) => (
+                      <li key={index}>
+                        <Link 
+                          to={link.url} 
+                          style={{ color: `${configs.footerTextColor}80` }}
+                          className="hover:text-white transition-colors"
+                          target={link.url.startsWith('http') ? '_blank' : '_self'}
+                          rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        >
+                          {link.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {configs.footerShowSocial === 'true' && (
+                <div>
+                  <h4 className="font-bold mb-4">社交链接</h4>
+                  <ul className="space-y-2">
+                    {configs.footerSocial.map((social, index) => (
+                      <li key={index}>
+                        <a 
+                          href={social.url} 
+                          style={{ color: `${configs.footerTextColor}80` }}
+                          className="hover:text-white transition-colors"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {social.name}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {configs.footerShowContact === 'true' && (
+                <div>
+                  <h4 className="font-bold mb-4">联系我们</h4>
+                  <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm">
+                    {configs.footerContact}
+                  </p>
+                </div>
+              )}
             </div>
-            <p className="text-gray-400 text-sm">
-              {configs.footerAbout}
+          </div>
+        )}
+
+        {configs.footerLayout === 'stacked' && (
+          <div className="text-center mb-8">
+            {configs.footerShowLogo === 'true' && (
+              <div className="mb-6">
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+                    <span className="text-white font-bold">菜</span>
+                  </div>
+                  <span className="font-bold text-xl">菜菜星球</span>
+                </div>
+                <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm max-w-md mx-auto">
+                  {configs.footerAbout}
+                </p>
+              </div>
+            )}
+            
+            {configs.footerShowNavigation === 'true' && (
+              <div className="mb-6">
+                <ul className="flex flex-wrap justify-center gap-6">
+                  {configs.footerLinks.map((link, index) => (
+                    <li key={index}>
+                      <Link 
+                        to={link.url} 
+                        style={{ color: `${configs.footerTextColor}80` }}
+                        className="hover:text-white transition-colors"
+                        target={link.url.startsWith('http') ? '_blank' : '_self'}
+                        rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {configs.footerShowSocial === 'true' && (
+              <div className="mb-6">
+                <ul className="flex flex-wrap justify-center gap-6">
+                  {configs.footerSocial.map((social, index) => (
+                    <li key={index}>
+                      <a 
+                        href={social.url} 
+                        style={{ color: `${configs.footerTextColor}80` }}
+                        className="hover:text-white transition-colors"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {social.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {configs.footerShowContact === 'true' && (
+              <div className="mb-6">
+                <p style={{ color: `${configs.footerTextColor}80` }} className="text-sm">
+                  {configs.footerContact}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {configs.footerShowCopyright === 'true' && (
+          <div 
+            className="pt-8 border-t text-center text-sm"
+            style={{ borderColor: `${configs.footerTextColor}20` }}
+          >
+            <p style={{ color: `${configs.footerTextColor}80` }}>
+              {configs.footerCopyright}
             </p>
           </div>
-          <div>
-            <h4 className="font-bold mb-4">导航</h4>
-            <ul className="space-y-2 text-gray-400">
-              {configs.footerLinks.map((link, index) => (
-                <li key={index}>
-                  <Link 
-                    to={link.url} 
-                    className="hover:text-white transition-colors"
-                    target={link.url.startsWith('http') ? '_blank' : '_self'}
-                    rel={link.url.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4">社交链接</h4>
-            <ul className="space-y-2 text-gray-400">
-              {configs.footerSocial.map((social, index) => (
-                <li key={index}>
-                  <a 
-                    href={social.url} 
-                    className="hover:text-white transition-colors"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {social.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4">联系我们</h4>
-            <p className="text-gray-400 text-sm">
-              {configs.footerContact}
-            </p>
-          </div>
-        </div>
-        <div className="pt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
-          <p>{configs.footerCopyright}</p>
-        </div>
+        )}
       </div>
     </footer>
   );

@@ -2,6 +2,7 @@ import { Routes, Route, useParams, useNavigate, Navigate } from 'react-router-do
 import React, { lazy, Suspense, useEffect } from 'react'
 import { useAuthStore } from './store/authStore'
 import sessionChecker from './utils/sessionChecker'
+import toast from 'react-hot-toast'
 
 import Home from './pages/Home'
 import Login from './login_management/Login'
@@ -53,13 +54,64 @@ function ShortLinkHandler() {
   const { isAuthenticated } = useAuthStore();
   const [password, setPassword] = React.useState('');
   const [showPasswordInput, setShowPasswordInput] = React.useState(false);
+  const [redirectTimer, setRedirectTimer] = React.useState(null);
+
+  // 清除登录信息并跳转登录页
+  const clearAuthAndRedirect = (message) => {
+    // 如果已经在登录页面或管理员后台，不需要跳转
+    const currentPath = window.location.pathname;
+    if (currentPath === '/login' || currentPath.startsWith('/admin-caicai0304')) {
+      return;
+    }
+    
+    // 清除之前的定时器
+    if (redirectTimer) {
+      clearTimeout(redirectTimer);
+    }
+    
+    // 清除token和用户信息
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // 显示提示
+    if (message) {
+      toast.error(message, {
+        duration: 3000,
+        style: {
+          background: '#fff',
+          color: '#374151',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          fontSize: '14px',
+          borderRadius: '8px',
+          padding: '12px 16px'
+        }
+      });
+    }
+    
+    // 3秒后跳转到登录页面
+    const timer = setTimeout(() => {
+      // 再次检查是否还在登录页面或首页，避免重复跳转
+      const path = window.location.pathname;
+      if (path !== '/login' && !path.startsWith('/admin-caicai0304') && path !== '/') {
+        window.location.href = '/login';
+      }
+    }, 3000);
+    setRedirectTimer(timer);
+  };
 
   const handleShortLink = async (password = '') => {
     // 确保用户已登录
     if (!isAuthenticated) {
-      // 直接导航到登录页
-      alert('请先登录再访问短链接');
-      navigate('/login');
+      // 检查是否有token
+      const hasToken = localStorage.getItem('token');
+      
+      if (hasToken) {
+        // 有token但未登录（可能过期）
+        clearAuthAndRedirect('登录已过期，请重新登录');
+      } else {
+        // 未登录
+        clearAuthAndRedirect('请先登录再访问短链接');
+      }
       return;
     }
 
@@ -104,8 +156,20 @@ function ShortLinkHandler() {
         setShowPasswordInput(true);
       } else {
         console.log('短链接无效或已过期:', data.message);
-        alert('短链接无效或已过期: ' + data.message);
-        navigate('/');
+        toast.error('短链接无效或已过期: ' + data.message, {
+          duration: 3000,
+          style: {
+            background: '#fff',
+            color: '#374151',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            fontSize: '14px',
+            borderRadius: '8px',
+            padding: '12px 16px'
+          }
+        });
+        setTimeout(() => {
+          navigate('/');
+        }, 3000);
       }
     } catch (error) {
         console.error('处理短链接失败:', error);
@@ -118,14 +182,33 @@ function ShortLinkHandler() {
         } else if (error.response?.status >= 500) {
           window.location.href = '/500';
         } else {
-          alert('处理短链接失败: ' + (error.message || '未知错误'));
-          navigate('/');
+          toast.error('处理短链接失败: ' + (error.message || '未知错误'), {
+            duration: 3000,
+            style: {
+              background: '#fff',
+              color: '#374151',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              fontSize: '14px',
+              borderRadius: '8px',
+              padding: '12px 16px'
+            }
+          });
+          setTimeout(() => {
+            navigate('/');
+          }, 3000);
         }
       }
   };
 
   useEffect(() => {
     handleShortLink();
+    
+    // 清理定时器
+    return () => {
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+      }
+    };
   }, [shareCode, navigate, isAuthenticated]);
 
   const handlePasswordSubmit = (e) => {
@@ -184,7 +267,7 @@ function ShortLinkHandler() {
 }
 
 function App() {
-  const { user, fetchUser } = useAuthStore()
+  const { user, fetchUser, resetAuth } = useAuthStore()
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -192,13 +275,16 @@ function App() {
       fetchUser()
       // 启动登录状态检测
       sessionChecker.startChecking()
+    } else {
+      // 如果没有token，重置登录状态
+      resetAuth()
     }
     
     // 清理函数
     return () => {
       sessionChecker.stopChecking()
     }
-  }, [fetchUser])
+  }, [fetchUser, resetAuth])
 
   useEffect(() => {
     if (user?.theme === 'dark') {
@@ -270,7 +356,6 @@ function App() {
             </Suspense>
           </AuthProtected>
         } />
-        {/* 动态任务类型路由 */}
         <Route path="/tasks/:gender/:id" element={
           <AuthProtected>
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"><div className="text-planet-purple text-2xl">加载中...</div></div>}>
@@ -278,7 +363,6 @@ function App() {
             </Suspense>
           </AuthProtected>
         } />
-        {/* 任务详情路由 */}
         <Route path="/task/:id" element={
           <AuthProtected>
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"><div className="text-planet-purple text-2xl">加载中...</div></div>}>

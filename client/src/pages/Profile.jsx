@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { FiMapPin, FiLink, FiGithub, FiCalendar, FiEdit, FiTarget, FiHeart, FiCheckCircle, FiX, FiSave, FiCamera, FiImage, FiRotateCw, FiMaximize2, FiMinimize2, FiUser, FiEye, FiMessageSquare, FiPlus, FiClock } from 'react-icons/fi';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { FiMapPin, FiLink, FiGithub, FiCalendar, FiEdit, FiTarget, FiHeart, FiCheckCircle, FiX, FiSave, FiCamera, FiImage, FiRotateCw, FiMaximize2, FiMinimize2, FiUser, FiEye, FiMessageSquare, FiPlus, FiClock, FiArrowLeft } from 'react-icons/fi';
 // import Cropper from 'react-easy-crop';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [likes, setLikes] = useState([]);
@@ -592,7 +593,17 @@ export default function Profile() {
       <div className="pt-16">
         {/* 用户信息头部 */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="relative mb-8 pt-8">
+          {/* 返回按钮 */}
+          <div className="flex items-center space-x-4 mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
+          <div className="relative mb-8">
             {/* 顶部用户信息区域 */}
             <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-800 dark:bg-gray-800" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.05), 0 10px 40px rgba(0,0,0,0.1)' }}>
               <div className="flex flex-col md:flex-row items-start md:items-center gap-6">

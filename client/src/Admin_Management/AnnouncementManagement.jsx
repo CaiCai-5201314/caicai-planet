@@ -115,62 +115,75 @@ export default function AnnouncementManagement() {
   }
 
   return (
-    <div className="p-6 flex flex-col min-h-[calc(100vh-8rem)]">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">公告管理</h2>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
-        >
-          <FiPlus size={18} />
-          <span>创建公告</span>
-        </button>
+    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+        <h2 className="text-xl font-bold text-gray-900">公告管理</h2>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center space-x-2 px-3 py-1.5 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors text-sm"
+          >
+            <FiPlus size={16} />
+            <span>创建公告</span>
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center space-x-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+          >
+            <FiPlus size={16} />
+            <span>下一期公告</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-grow flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">标题</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">级别</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">标题</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">级别</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">创建时间</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-100">
               {announcements.map((announcement) => (
-                <tr key={announcement.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <tr key={announcement.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{announcement.title}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${announcement.level === 'heavy' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${announcement.level === 'heavy' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
                       {announcement.level === 'heavy' ? '重度' : '轻度'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${announcement.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${announcement.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                       {announcement.status === 'active' ? '活跃' : '已停用'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(announcement.created_at), 'yyyy-MM-dd HH:mm', { locale: zhCN })}
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {format(new Date(announcement.created_at), 'yyyy-MM-dd HH:mm', { locale: zhCN })}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-1">
                       <button
                         onClick={() => handleEdit(announcement)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="编辑"
                       >
-                        <FiEdit size={18} />
+                        <FiEdit size={16} />
                       </button>
                       <button
                         onClick={() => handleDelete(announcement.id)}
-                        className="text-red-600 hover:text-red-900"
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="删除"
                       >
-                        <FiTrash2 size={18} />
+                        <FiTrash2 size={16} />
                       </button>
                     </div>
                   </td>
@@ -182,12 +195,12 @@ export default function AnnouncementManagement() {
         
         {/* 分页 */}
         {!loading && (
-          <div className="px-6 py-6 border-t border-gray-100 flex items-center justify-center mt-auto">
-            <nav className="flex items-center space-x-2">
+          <div className="px-4 py-4 border-t border-gray-100 flex items-center justify-center mt-auto">
+            <nav className="flex items-center space-x-1">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
               >
                 上一页
               </button>
@@ -206,7 +219,7 @@ export default function AnnouncementManagement() {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                    className={`px-3 py-1.5 rounded-md border text-sm ${currentPage === pageNum
                       ? 'bg-planet-purple text-white border-planet-purple'
                       : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
@@ -218,7 +231,7 @@ export default function AnnouncementManagement() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
               >
                 下一页
               </button>
@@ -230,8 +243,8 @@ export default function AnnouncementManagement() {
       {/* 创建/编辑模态框 */}
       {(showCreateModal || editing) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-6 flex-shrink-0">
               <h3 className="text-xl font-bold text-gray-900">
                 {editing ? '编辑公告' : '创建公告'}
               </h3>
@@ -242,7 +255,7 @@ export default function AnnouncementManagement() {
                 <FiX size={20} />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-y-auto flex-grow pr-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   标题
@@ -290,7 +303,7 @@ export default function AnnouncementManagement() {
                 </select>
               </div>
             </div>
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex justify-end space-x-3 mt-6 flex-shrink-0">
               <button
                 onClick={handleCancel}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"

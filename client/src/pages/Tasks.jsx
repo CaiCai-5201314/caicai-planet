@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { FiChevronRight, FiLayers, FiPlus, FiX, FiSend, FiMoon, FiInfo, FiClock } from 'react-icons/fi';
+import { FiChevronRight, FiLayers, FiPlus, FiX, FiSend, FiMoon, FiInfo, FiClock, FiArrowLeft } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -11,7 +11,7 @@ export default function Tasks() {
   const { user, fetchUser } = useAuthStore();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(true);
   const [maleCategories, setMaleCategories] = useState([]);
   const [femaleCategories, setFemaleCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,13 +36,6 @@ export default function Tasks() {
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
     // 确保用户信息已加载
     const loadUser = async () => {
       if (!user) {
@@ -56,16 +49,17 @@ export default function Tasks() {
     const fetchTaskTypes = async () => {
       try {
         setLoading(true);
-        // 获取男版任务类型
-        const maleResponse = await api.get('/users/task-types?gender=male');
-        const maleTypes = maleResponse.data.taskTypes || [];
+        // 并行获取男版和女版任务类型
+        const [maleResponse, femaleResponse] = await Promise.all([
+          api.get('/users/task-types?gender=male'),
+          api.get('/users/task-types?gender=female')
+        ]);
         
-        // 获取女版任务类型
-        const femaleResponse = await api.get('/users/task-types?gender=female');
+        const maleTypes = maleResponse.data.taskTypes || [];
         const femaleTypes = femaleResponse.data.taskTypes || [];
         
         // 转换为前端需要的格式
-        const maleFormatted = maleTypes.map((type, index) => ({
+        const maleFormatted = maleTypes.map((type) => ({
           id: type.id,
           title: type.name,
           description: type.description || '暂无描述',
@@ -74,7 +68,7 @@ export default function Tasks() {
           path: `/tasks/male/${type.id}`
         }));
         
-        const femaleFormatted = femaleTypes.map((type, index) => ({
+        const femaleFormatted = femaleTypes.map((type) => ({
           id: type.id,
           title: type.name,
           description: type.description || '暂无描述',
@@ -127,22 +121,6 @@ export default function Tasks() {
     }
   };
 
-  // 获取用户月球分信息
-  const fetchMoonPoints = async () => {
-    if (!user) return;
-    
-    try {
-      setMoonPointsLoading(true);
-      const response = await api.get(`/moon-points/users/${user.id}`);
-      setMoonPoints(response.data.user.moon_points || 0);
-    } catch (error) {
-      console.error('获取月球分信息失败:', error);
-      toast.error('获取月球分信息失败');
-    } finally {
-      setMoonPointsLoading(false);
-    }
-  };
-
   // 获取月球分历史记录
   const fetchMoonPointLogs = async () => {
     if (!user) return;
@@ -161,19 +139,20 @@ export default function Tasks() {
 
   // 打开月球分弹窗
   const openMoonPointsModal = async () => {
-    await fetchMoonPoints();
+    // 直接从user对象获取月球分，避免额外请求
+    if (user?.moon_points !== undefined) {
+      setMoonPoints(user.moon_points);
+    }
+    // 只请求历史记录
     await fetchMoonPointLogs();
     setShowMoonPointsModal(true);
   };
 
-  const ModuleSection = ({ title, categories, moduleType, delay }) => {
+  const ModuleSection = ({ title, categories, moduleType }) => {
     const isMale = moduleType === 'male';
 
     return (
-      <div
-        className={`mb-12 transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-        style={{ transitionDelay: `${delay}ms` }}
-      >
+      <div className="mb-12">
         {/* 模块标题栏 */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
@@ -195,15 +174,14 @@ export default function Tasks() {
 
         {/* 分类卡片网格 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {categories.map((category, index) => {
+          {categories.map((category) => {
             const Icon = category.icon;
             const isHovered = hoveredCard === `${moduleType}-${category.id}`;
 
             return (
               <div
                 key={category.id}
-                className={`group relative overflow-hidden rounded-2xl cursor-pointer transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
-                style={{ transitionDelay: `${delay + 100 + index * 100}ms` }}
+                className="group relative overflow-hidden rounded-2xl cursor-pointer"
                 onMouseEnter={() => setHoveredCard(`${moduleType}-${category.id}`)}
                 onMouseLeave={() => setHoveredCard(null)}
                 onClick={() => navigate(category.path)}
@@ -255,6 +233,17 @@ export default function Tasks() {
       {/* 主内容 */}
       <div className="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
+          {/* 返回按钮 */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
+          
           {/* 提议任务按钮和我的月球分 - 右上角 */}
         <div className="flex justify-end mb-6 space-x-4">
           {/* 我的月球分模块 */}
@@ -265,7 +254,7 @@ export default function Tasks() {
             <FiMoon className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span>我的月球分</span>
             <span className="bg-white/20 px-2 py-0.5 rounded-full text-sm font-bold group-hover:bg-white/30 transition-colors">
-              {moonPointsLoading ? '...' : formatMoonPoints(moonPoints)}
+              {user?.moon_points !== undefined ? formatMoonPoints(user.moon_points) : '...'}
             </span>
           </button>
           
@@ -291,10 +280,9 @@ export default function Tasks() {
                   title="男生模块"
                   categories={maleCategories}
                   moduleType="male"
-                  delay={100}
                 />
               ) : (
-                <div className={`mb-12 transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div className="mb-12">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-planet-purple to-planet-cyan flex items-center justify-center shadow-lg shadow-planet-purple/30">
@@ -320,7 +308,7 @@ export default function Tasks() {
 
               {/* 分隔线 */}
               {maleCategories.length > 0 && femaleCategories.length > 0 && (
-                <div className={`relative my-10 transition-all duration-700 ease-out ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: '400ms' }}>
+                <div className="relative my-10">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-200 dark:border-gray-700" />
                   </div>
@@ -338,10 +326,9 @@ export default function Tasks() {
                   title="女生模块"
                   categories={femaleCategories}
                   moduleType="female"
-                  delay={500}
                 />
               ) : (
-                <div className={`mb-12 transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                <div className="mb-12">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-planet-pink to-rose-400 flex items-center justify-center shadow-lg shadow-planet-pink/30">
@@ -523,7 +510,7 @@ export default function Tasks() {
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">当前月球分</p>
                   <h4 className="text-3xl font-bold text-gray-900 dark:text-white mt-1">
-                    {moonPointsLoading ? '...' : formatMoonPoints(moonPoints)}
+                    {user?.moon_points !== undefined ? formatMoonPoints(user.moon_points) : '...'}
                   </h4>
                 </div>
                 <div className="bg-white/80 dark:bg-gray-800/80 p-4 rounded-lg shadow-sm">

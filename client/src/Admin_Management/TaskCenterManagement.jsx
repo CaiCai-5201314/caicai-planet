@@ -884,19 +884,17 @@ export default function TaskCenterManagement() {
   };
 
   return (
-    <div className="p-6 flex flex-col min-h-[calc(100vh-8rem)]">
+    <div className="flex flex-col">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">任务中心管理</h1>
-        {!showProposalsTab && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center space-x-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
-          >
-            <FiPlus size={20} />
-            <span>创建任务</span>
-          </button>
-        )}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">任务中心管理</h1>
+        <button
+          onClick={openAddModal}
+          className="flex items-center space-x-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors z-10"
+        >
+          <FiPlus size={20} />
+          <span>创建任务</span>
+        </button>
       </div>
 
       {/* 统计卡片 */}

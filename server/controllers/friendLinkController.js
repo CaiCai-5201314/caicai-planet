@@ -7,9 +7,7 @@ const friendLinkController = {
       const { page = 1, limit = 20, status, category } = req.query;
       const offset = (page - 1) * limit;
 
-      const where = {
-        status: 'approved' // 只返回已通过审核的友链
-      };
+      const where = {};
       if (status) where.status = status;
       if (category) where.category = category;
 

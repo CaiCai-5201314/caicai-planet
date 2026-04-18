@@ -4,6 +4,7 @@ const { hashPassword, comparePassword } = require('../utils/password');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 const { generateCode, saveCode, verifyCode } = require('../utils/verificationCode');
+const { verifyCaptcha } = require('../utils/imageCaptcha');
 const logger = require('../utils/logger');
 
 // 生成唯一的5位数字UID
@@ -31,10 +32,20 @@ const authController = {
         });
       }
 
-      const { username, email, password, nickname, verificationCode } = req.body;
+      const { username, email, password, nickname, verificationCode, captchaCode, captchaId } = req.body;
 
-      // 验证验证码
-      const codeResult = verifyCode(email, verificationCode);
+      // 验证图像验证码
+      if (!captchaId || !captchaCode) {
+        return res.status(400).json({ message: '请输入图像验证码' });
+      }
+
+      const captchaResult = verifyCaptcha(captchaId, captchaCode);
+      if (!captchaResult.valid) {
+        return res.status(400).json({ message: captchaResult.message });
+      }
+
+      // 验证邮箱验证码
+      const codeResult = verifyCode(email, verificationCode, 'register');
       if (!codeResult.valid) {
         return res.status(400).json({ message: codeResult.message });
       }
@@ -522,13 +533,13 @@ const authController = {
 
       // 生成验证码
       const code = generateCode();
-      saveCode(email, code);
+      saveCode(email, code, 'forgotPassword');
 
       // 发送验证码邮件
       const { sendVerificationCode } = require('../config/email');
       await sendVerificationCode(email, code);
 
-      logger.info('验证码已发送', { email, codeLength: code.length });
+      logger.info('验证码已发送', { email, codeLength: code.length, type: 'forgotPassword' });
 
       res.json({ message: '验证码已发送到您的邮箱' });
     } catch (error) {
@@ -541,7 +552,7 @@ const authController = {
     try {
       const { email, code } = req.body;
 
-      const codeResult = verifyCode(email, code);
+      const codeResult = verifyCode(email, code, 'forgotPassword');
       if (!codeResult.valid) {
         return res.status(400).json({ message: codeResult.message });
       }

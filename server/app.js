@@ -17,6 +17,8 @@ const tagRoutes = require('./routes/tags');
 const adminRoutes = require('./routes/admin');
 const uploadRoutes = require('./routes/upload');
 const verificationRoutes = require('./routes/verification');
+const emailStatsRoutes = require('./routes/emailStats');
+const errorLogsRoutes = require('./routes/errorLogs');
 
 const notificationRoutes = require('./routes/notifications');
 const errorTypeRoutes = require('./Question/routes/errorTypes');
@@ -28,6 +30,7 @@ const checkInRoutes = require('./routes/checkIn');
 const moonCentersRouter = require('./routes/moonCenters');
 const expManagementRoutes = require('./routes/expManagement');
 const siteConfigAdminController = require('./controllers/siteConfigAdminController');
+const advertisementRoutes = require('./routes/advertisements');
 
 const errorHandler = require('./middleware/errorHandler');
 const { logOperation } = require('./middleware/auth');
@@ -121,12 +124,15 @@ app.use('/api/admin', logOperation, adminRoutes);
 app.use('/api/admin', logOperation, errorTypeRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/verification', verificationRoutes);
+app.use('/api/email', emailStatsRoutes);
+app.use('/api/error', errorLogsRoutes);
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/user-tasks', logOperation, userTaskRoutes);
 app.use('/api/check-in', checkInRoutes);
 app.use('/api/moon-centers', moonCentersRouter);
 app.use('/api/exp-management', expManagementRoutes);
+app.use('/api/advertisements', advertisementRoutes);
 
 // 月球分路由
 console.log('Loading moon points routes...');
@@ -603,6 +609,32 @@ const startServer = async () => {
       console.log('user_daily_posts表创建成功');
     } catch (error) {
       console.log('user_daily_posts表已存在');
+    }
+    // 创建广告位表
+    try {
+      await db.sequelize.query(`
+        CREATE TABLE IF NOT EXISTS advertisements (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(200) NOT NULL,
+          position VARCHAR(100) NOT NULL,
+          content TEXT,
+          image_url VARCHAR(500),
+          link_url VARCHAR(500),
+          status ENUM('draft', 'testing', 'published') NOT NULL DEFAULT 'draft',
+          start_time DATETIME,
+          end_time DATETIME,
+          priority INT NOT NULL DEFAULT 0,
+          clicks INT NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_position (position),
+          INDEX idx_status (status),
+          INDEX idx_priority (priority)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+      console.log('advertisements表创建成功');
+    } catch (error) {
+      console.log('advertisements表已存在');
     }
     // 修改moon_point_logs表的reason_type字段从ENUM改为STRING
     try {
