@@ -29,10 +29,14 @@ const generateCaptcha = () => {
     expiresAt: Date.now() + 5 * 60 * 1000
   });
 
-  // 返回SVG格式的验证码
+  // 将SVG转换为Base64格式
+  const base64Svg = Buffer.from(captcha.data).toString('base64');
+  const imageDataUrl = `data:image/svg+xml;base64,${base64Svg}`;
+
+  // 返回Base64格式的验证码
   return {
     id,
-    image: captcha.data
+    image: imageDataUrl
   };
 };
 

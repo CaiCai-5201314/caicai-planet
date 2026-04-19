@@ -109,23 +109,6 @@ export default function Register() {
       return;
     }
 
-    // 验证图像验证码
-    try {
-      const captchaResponse = await api.post('/verification/captcha/verify', {
-        id: formData.captchaId,
-        code: formData.captchaCode
-      });
-
-      if (!captchaResponse.data.success) {
-        toast.error(captchaResponse.data.message || '图像验证码错误');
-        fetchCaptcha(); // 刷新验证码
-        return;
-      }
-    } catch (error) {
-      toast.error('验证图像验证码失败');
-      return;
-    }
-
     // 如果邮箱验证码字段未显示，则显示它并自动发送验证码
     if (!showEmailVerification) {
       setShowEmailVerification(true);
@@ -313,8 +296,9 @@ export default function Register() {
                   ) : (
                     <>
                       {captchaImage ? (
-                        <div
-                          dangerouslySetInnerHTML={{ __html: captchaImage }}
+                        <img
+                          src={captchaImage}
+                          alt="验证码"
                           className="h-10 w-24 object-contain"
                         />
                       ) : (
