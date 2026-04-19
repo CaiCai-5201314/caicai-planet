@@ -341,7 +341,7 @@ export default function Community() {
                       className="block"
                     >
                       <img
-                        src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `http://localhost:3002${advertisement.image_url}`}
+                        src={advertisement.image_url}
                         alt={advertisement.title}
                         className="w-full h-48 object-cover"
                       />

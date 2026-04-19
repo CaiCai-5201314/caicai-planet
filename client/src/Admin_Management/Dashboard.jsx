@@ -5,7 +5,7 @@ import {
   FiTrendingUp, FiActivity, FiCalendar, FiMoreVertical, FiEdit2,
   FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX, FiTrash2,
   FiCamera, FiSave, FiCheck, FiAlertCircle, FiSettings, FiShield, FiAlertTriangle,
-  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar
+  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar, FiMenu
 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
@@ -17,7 +17,7 @@ import ErrorLogManagement from './ErrorLogManagement';
 import TaskCenterManagement from './TaskCenterManagement';
 import TaskTypeManagement from './TaskTypeManagement';
 import UserTaskManagement from './UserTaskManagement';
-import AnnouncementManagement from './AnnouncementManagement';
+import AnnouncementManagement from './announcementManagement';
 import AuthorizationManagement from './AuthorizationManagement';
 import CheckInManagement from './CheckInManagement';
 import MoonCenterManagement from './MoonCenterManagement';
@@ -344,10 +344,10 @@ function FriendLinkManagement() {
                     {link.share_code && (
                       <div className="text-xs text-gray-500 text-right">
                         <div className="flex items-center justify-between">
-                          <span>短链接: {link.shortUrl || `http://localhost:3000/short/${link.share_code}`}</span>
+                          <span>短链接: {link.shortUrl || `${window.location.origin}/short/${link.share_code}`}</span>
                           <button
                             onClick={() => {
-                              const shortUrl = link.shortUrl || `http://localhost:3000/short/${link.share_code}`;
+                              const shortUrl = link.shortUrl || `${window.location.origin}/short/${link.share_code}`;
                               navigator.clipboard.writeText(shortUrl).then(() => {
                                 alert('短链接已复制到剪贴板');
                               });
@@ -2070,6 +2070,22 @@ function AdminLayout({ children }) {
 
       {/* 主内容区域 */}
       <div className="flex-1 flex flex-col lg:ml-64">
+        {/* 移动端顶部栏 */}
+        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 text-gray-600 hover:text-gray-900"
+          >
+            <FiMenu size={24} />
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+              <span className="text-white font-bold text-sm">菜</span>
+            </div>
+            <span className="font-bold text-lg">后台管理</span>
+          </div>
+          <div className="w-10"></div>
+        </div>
         {/* 内容区域 */}
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           {children}

@@ -384,7 +384,7 @@ export default function AdvertisementManagement() {
                       <div className="flex items-center gap-3">
                         <div className="flex-shrink-0">
                           <img
-                            src={`http://localhost:3002${formData.image_url}`}
+                            src={formData.image_url}
                             alt="广告图片"
                             className="w-24 h-16 object-cover rounded-lg"
                           />

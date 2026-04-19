@@ -313,9 +313,8 @@ export default function Register() {
                   ) : (
                     <>
                       {captchaImage ? (
-                        <img
-                          src={captchaImage}
-                          alt="验证码"
+                        <div
+                          dangerouslySetInnerHTML={{ __html: captchaImage }}
                           className="h-10 w-24 object-contain"
                         />
                       ) : (
