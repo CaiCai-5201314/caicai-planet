@@ -17,7 +17,7 @@ import ErrorLogManagement from './ErrorLogManagement';
 import TaskCenterManagement from './TaskCenterManagement';
 import TaskTypeManagement from './TaskTypeManagement';
 import UserTaskManagement from './UserTaskManagement';
-import AnnouncementManagement from './announcementManagement';
+import AnnouncementManagement from './AnnouncementManagement';
 import AuthorizationManagement from './AuthorizationManagement';
 import CheckInManagement from './CheckInManagement';
 import MoonCenterManagement from './MoonCenterManagement';
