@@ -25,10 +25,12 @@ const BeautyCare = lazy(() => import('./pages/BeautyCare'))
 const CreativeCrafts = lazy(() => import('./pages/CreativeCrafts'))
 const TaskTypeDetail = lazy(() => import('./pages/TaskTypeDetail'))
 const TaskDetail = lazy(() => import('./pages/TaskDetail'))
+const Lab = lazy(() => import('./pages/Lab'))
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
 import PostDetail from './pages/PostDetail'
 import CreatePost from './pages/CreatePost'
+import EditPost from './pages/EditPost'
 import AdminDashboard from './Admin_Management/Dashboard'
 import Notifications from './pages/Notifications'
 import Terms from './pages/Terms'
@@ -390,10 +392,22 @@ function App() {
             <Notifications />
           </AuthProtected>
         } />
+        <Route path="/lab" element={
+          <AuthProtected>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"><div className="text-planet-purple text-2xl">加载中...</div></div>}>
+              <Lab />
+            </Suspense>
+          </AuthProtected>
+        } />
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={
           <AuthProtected>
             <CreatePost />
+          </AuthProtected>
+        } />
+        <Route path="/edit-post/:id" element={
+          <AuthProtected>
+            <EditPost />
           </AuthProtected>
         } />
         <Route path="/admin-caicai0304/*" element={<AdminDashboard />} />

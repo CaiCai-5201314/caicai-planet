@@ -1,4 +1,5 @@
 const { User, Post, Comment, FriendLink, Like, Favorite, Sequelize } = require('../models');
+const storageService = require('../services/storageService');
 
 const userController = {
   getProfile: async (req, res) => {
@@ -164,7 +165,14 @@ const userController = {
         return res.status(400).json({ message: '请上传图片' });
       }
 
-      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      let avatarUrl = null;
+      try {
+        avatarUrl = await storageService.upload(req.file, 'avatars');
+      } catch (error) {
+        console.error('上传文件失败:', error);
+        return res.status(500).json({ message: '上传文件失败' });
+      }
+      
       console.log('Avatar URL:', avatarUrl);
       console.log('Updating user:', req.user.id);
       
@@ -193,7 +201,14 @@ const userController = {
         return res.status(400).json({ message: '请上传图片' });
       }
 
-      const coverUrl = `/uploads/covers/${req.file.filename}`;
+      let coverUrl = null;
+      try {
+        coverUrl = await storageService.upload(req.file, 'covers');
+      } catch (error) {
+        console.error('上传文件失败:', error);
+        return res.status(500).json({ message: '上传文件失败' });
+      }
+      
       console.log('Cover URL:', coverUrl);
       console.log('Updating user:', req.user.id);
       

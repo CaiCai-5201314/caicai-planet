@@ -524,6 +524,11 @@ exports.approveTaskProposal = async (req, res) => {
         });
       }
 
+      // 根据任务难度设置奖励积分
+      let reward = 3; // 默认中等任务
+      if (actualDifficulty === 'easy') reward = 2;
+      else if (actualDifficulty === 'hard') reward = 5;
+      
       // 创建任务
       const task = await Task.create({
         title: proposal.title,
@@ -534,7 +539,7 @@ exports.approveTaskProposal = async (req, res) => {
         status: 'published',
         createdBy: adminId,
         proposalUserId: proposal.userId, // 保存提议用户的ID
-        reward: 10,
+        reward: reward,
         suggestedTime: proposal.suggestedTime,
         items: proposal.items
       });

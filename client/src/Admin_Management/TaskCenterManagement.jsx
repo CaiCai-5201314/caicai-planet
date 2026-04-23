@@ -784,12 +784,19 @@ export default function TaskCenterManagement() {
             <label className="block text-sm font-medium text-gray-700 mb-1">任务难度</label>
             <select
               value={formData.difficulty}
-              onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+              onChange={(e) => {
+                const difficulty = e.target.value;
+                let reward = 2; // 默认积分
+                if (difficulty === 'easy') reward = 2;
+                else if (difficulty === 'medium') reward = 3;
+                else if (difficulty === 'hard') reward = 5;
+                setFormData({ ...formData, difficulty, reward });
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
             >
-              <option value="easy">简单</option>
-              <option value="medium">中等</option>
-              <option value="hard">困难</option>
+              <option value="easy">简单 (2积分)</option>
+              <option value="medium">中等 (3积分)</option>
+              <option value="hard">困难 (5积分)</option>
             </select>
           </div>
           
@@ -809,14 +816,14 @@ export default function TaskCenterManagement() {
         
         {/* 奖励积分 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分</label>
-          <input
-            type="number"
-            value={formData.reward}
-            onChange={(e) => setFormData({ ...formData, reward: parseInt(e.target.value) || 0 })}
-            placeholder="0"
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-          />
+          <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分（根据难度自动计算，可手动调整）</label>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-purple-600">{formData.reward}</span>
+            <span className="text-gray-500">积分</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            简单任务2积分，中等任务3积分，困难任务5积分
+          </p>
         </div>
         
         {/* 提议用户和过期时间 */}

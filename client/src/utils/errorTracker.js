@@ -1,4 +1,5 @@
 // 错误跟踪器
+import api from '../services/api';
 
 class ErrorTracker {
   constructor() {
@@ -119,7 +120,7 @@ class ErrorTracker {
     
     window.fetch = async (url, options) => {
       // 跳过错误日志自己的API，避免无限循环
-      if (typeof url === 'string' && url.includes('/api/error/log')) {
+      if (typeof url === 'string' && (url.includes('/api/error/log') || url.includes('/error/log'))) {
         return originalFetch(url, options);
       }
       
@@ -127,19 +128,22 @@ class ErrorTracker {
         const response = await originalFetch(url, options);
         
         if (!response.ok) {
-          this.logError({
-            type: 'api',
-            severity: 'error',
-            message: `API request failed: ${url} (${response.status})`,
-            context: {
-              eventType: 'api_error',
-              url,
-              method: options?.method || 'GET',
-              status: response.status,
-              statusText: response.statusText,
-              timestamp: new Date().toISOString()
-            }
-          });
+          // 只跟踪非认证错误，避免401错误导致的循环
+          if (response.status !== 401) {
+            this.logError({
+              type: 'api',
+              severity: 'error',
+              message: `API request failed: ${url} (${response.status})`,
+              context: {
+                eventType: 'api_error',
+                url,
+                method: options?.method || 'GET',
+                status: response.status,
+                statusText: response.statusText,
+                timestamp: new Date().toISOString()
+              }
+            });
+          }
         }
         
         return response;
@@ -320,13 +324,7 @@ class ErrorTracker {
     try {
       // 批量发送错误
       for (const error of errorsToSend) {
-        await fetch('/api/error/log', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(error)
-        });
+        await api.post('/error/log', error);
       }
     } catch (error) {
       // 如果发送失败，将错误重新加入队列（如果队列还没满）

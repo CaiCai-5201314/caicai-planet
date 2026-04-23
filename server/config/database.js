@@ -1,12 +1,15 @@
 require('dotenv').config();
 
+const env = process.env.NODE_ENV || 'development';
+const config = require('./index');
+
 module.exports = {
   development: {
-    username: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '123456',
-    database: process.env.DB_NAME || 'caicaitask520',
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 3306,
+    username: config.database.username,
+    password: config.database.password,
+    database: config.database.database,
+    host: config.database.host,
+    port: config.database.port,
     dialect: 'mysql',
     logging: console.log,
     pool: {
@@ -20,11 +23,11 @@ module.exports = {
     }
   },
   production: {
-    username: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
+    username: config.database.username,
+    password: config.database.password,
+    database: config.database.database,
+    host: config.database.host,
+    port: config.database.port,
     dialect: 'mysql',
     logging: false,
     pool: {
@@ -32,6 +35,9 @@ module.exports = {
       min: 0,
       acquire: 30000,
       idle: 10000
+    },
+    dialectOptions: {
+      charset: 'utf8mb4'
     }
   }
 };

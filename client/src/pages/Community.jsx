@@ -110,15 +110,7 @@ export default function Community() {
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              <FiArrowLeft size={20} />
-              <span>返回</span>
-            </button>
-          </div>
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
             <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>
@@ -234,7 +226,7 @@ export default function Community() {
                               </div>
                             )}
                             <img
-                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
+                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `http://localhost:3002${post.author.avatar}`) : '/moren.png'}
                               alt={post.author?.nickname || post.author?.username}
                               className="w-10 h-10 rounded-full object-cover"
                               onError={(e) => {
@@ -272,7 +264,7 @@ export default function Community() {
 
                           {post.cover_image && (
                             <img
-                              src={post.cover_image}
+                              src={post.cover_image.startsWith('http') ? post.cover_image : `http://localhost:3002${post.cover_image}`}
                               alt={post.title}
                               className="w-full h-48 object-cover rounded-xl mb-4"
                             />
@@ -341,7 +333,7 @@ export default function Community() {
                       className="block"
                     >
                       <img
-                        src={advertisement.image_url}
+                        src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `http://localhost:3002${advertisement.image_url}`}
                         alt={advertisement.title}
                         className="w-full h-48 object-cover"
                       />

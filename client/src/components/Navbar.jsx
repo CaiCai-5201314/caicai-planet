@@ -17,6 +17,7 @@ const baseNavItems = [
 
 const authNavItems = [
   { label: '月球', path: '/tasks' },
+  { label: '星球实验室', path: '/lab' },
 ];
 
 export default function Navbar() {

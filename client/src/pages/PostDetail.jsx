@@ -259,9 +259,9 @@ export default function PostDetail() {
 
           <article className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
             {post.cover_image && (
-              <div style={{ cursor: 'pointer' }} onClick={() => setPreviewImage(post.cover_image)}>
+              <div style={{ cursor: 'pointer' }} onClick={() => setPreviewImage(post.cover_image.startsWith('http') ? post.cover_image : `http://localhost:3002${post.cover_image}`)}>
                 <img
-                  src={post.cover_image}
+                  src={post.cover_image.startsWith('http') ? post.cover_image : `http://localhost:3002${post.cover_image}`}
                   alt={post.title}
                   className="w-full h-64 md:h-96 object-cover transition-transform hover:scale-105"
                 />
@@ -271,7 +271,7 @@ export default function PostDetail() {
             <div className="p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <img
-                  src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
+                  src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `http://localhost:3002${post.author.avatar}`) : '/moren.png'}
                   alt={post.author?.nickname || post.author?.username}
                   className="w-12 h-12 rounded-full object-cover"
                   onError={(e) => {
@@ -293,11 +293,21 @@ export default function PostDetail() {
                     {format(new Date(post.created_at), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN })}
                   </div>
                 </div>
-                {post.category && (
-                  <span className="ml-auto px-3 py-1 bg-planet-purple/10 text-planet-purple text-sm rounded-full">
-                    {post.category.name}
-                  </span>
-                )}
+                <div className="ml-auto flex items-center space-x-2">
+                  {post.category && (
+                    <span className="px-3 py-1 bg-planet-purple/10 text-planet-purple text-sm rounded-full">
+                      {post.category.name}
+                    </span>
+                  )}
+                  {isAuthenticated && (post.author?.id === user.id || user?.isAdmin) && (
+                    <Link
+                      to={`/edit-post/${id}`}
+                      className="px-3 py-1 bg-planet-purple text-white text-sm rounded-full hover:bg-planet-purple/90 transition-colors"
+                    >
+                      编辑
+                    </Link>
+                  )}
+                </div>
               </div>
 
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">{post.title}</h1>
@@ -309,10 +319,10 @@ export default function PostDetail() {
                     img: ({ node, inline, className, src, alt, title, ...props }) => (
                       <div style={{ cursor: 'pointer' }} onClick={(e) => {
                         e.stopPropagation();
-                        setPreviewImage(src);
+                        setPreviewImage(src.startsWith('http') ? src : `http://localhost:3002${src}`);
                       }}>
                         <img
-                          src={src}
+                          src={src.startsWith('http') ? src : `http://localhost:3002${src}`}
                           alt={alt}
                           title={title}
                           className={`${className || ''} transition-transform hover:scale-105`}
@@ -413,7 +423,7 @@ export default function PostDetail() {
                 comments.map((comment) => (
                   <div key={comment.id} className="flex space-x-4">
                     <img
-                      src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? comment.user.avatar : '/moren.png'}
+                      src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? (comment.user.avatar.startsWith('http') ? comment.user.avatar : `http://localhost:3002${comment.user.avatar}`) : '/moren.png'}
                       alt={comment.user?.nickname || comment.user?.username}
                       className="w-10 h-10 rounded-full object-cover"
                       onError={(e) => {
@@ -497,7 +507,7 @@ export default function PostDetail() {
                           {comment.replies.map((reply) => (
                             <div key={reply.id} className="flex space-x-3">
                               <img
-                                src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? reply.user.avatar : '/moren.png'}
+                                src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? (reply.user.avatar.startsWith('http') ? reply.user.avatar : `http://localhost:3002${reply.user.avatar}`) : '/moren.png'}
                                 alt={reply.user?.nickname || reply.user?.username}
                                 className="w-8 h-8 rounded-full object-cover"
                                 onError={(e) => {

@@ -3,6 +3,7 @@ const { Post, User, Category, Tag, Comment, Like, Favorite, Sequelize } = db;
 const { Op } = Sequelize;
 const { createNotification } = require('./notificationController');
 const { applyMoonPoints } = require('../services/moonPointService');
+const storageService = require('../services/storageService');
 
 // 全局浏览记录缓存，用于防重复点击
 const viewRecords = new Map();
@@ -158,7 +159,12 @@ const postController = {
 
       let cover_image = null;
       if (req.file) {
-        cover_image = `/uploads/posts/${req.file.filename}`;
+        try {
+          cover_image = await storageService.upload(req.file, 'posts');
+        } catch (error) {
+          console.error('上传文件失败:', error);
+          return res.status(500).json({ message: '上传文件失败' });
+        }
       }
 
       console.log('[createPost] 准备创建Post...');
@@ -236,11 +242,34 @@ const postController = {
         status: status || post.status
       });
 
+      // 更新标签
+      if (tags && Array.isArray(tags)) {
+        const { sequelize } = require('../models');
+        // 先删除原有的标签关联
+        await sequelize.query('DELETE FROM post_tags WHERE post_id = ?', {
+          replacements: [id],
+          type: sequelize.QueryTypes.DELETE
+        });
+        
+        // 添加新的标签关联
+        if (tags.length > 0) {
+          const postTagData = tags.map(tagId => ({
+            post_id: id,
+            tag_id: tagId
+          }));
+          await sequelize.query('INSERT INTO post_tags (post_id, tag_id) VALUES ?', {
+            replacements: [postTagData],
+            type: sequelize.QueryTypes.INSERT
+          });
+        }
+      }
+
       res.json({
         message: '文章更新成功',
         post: await Post.findByPk(post.id, {
           include: [
-            { model: User, as: 'author', attributes: ['id', 'username', 'nickname', 'avatar'] }
+            { model: User, as: 'author', attributes: ['id', 'username', 'nickname', 'avatar'] },
+            { model: Tag, as: 'tags', attributes: ['id', 'name'] }
           ]
         })
       });

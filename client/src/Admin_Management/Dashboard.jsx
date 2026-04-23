@@ -24,6 +24,7 @@ import MoonCenterManagement from './MoonCenterManagement';
 import MoonPointRequestManagement from './MoonPointRequestManagement';
 import MoonPointRuleManagement from './MoonPointRuleManagement';
 import ExpManagement from './ExpManagement';
+import LabManagement from './LabManagement';
 
 // 友链管理组件
 function FriendLinkManagement() {
@@ -1907,6 +1908,7 @@ function AdminLayout({ children }) {
       { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
       { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
       { path: '/admin-caicai0304/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
+      { path: '/admin-caicai0304/lab', icon: FiSettings, label: '星球实验室管理', permission: 'labManagement' },
     ];
 
     // 管理员显示所有菜单
@@ -3571,6 +3573,7 @@ export default function AdminDashboard() {
         <Route path="/moon-point-rules" element={<ProtectedRoute requiredPermission="moonPointRuleManagement"><MoonPointRuleManagement /></ProtectedRoute>} />
         <Route path="/exp-management" element={<ProtectedRoute requiredPermission="expManagement"><ExpManagement /></ProtectedRoute>} />
         <Route path="/error-logs" element={<ProtectedRoute requiredPermission="errorLogManagement"><ErrorLogManagement /></ProtectedRoute>} />
+        <Route path="/lab" element={<ProtectedRoute requiredPermission="labManagement"><LabManagement /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );
