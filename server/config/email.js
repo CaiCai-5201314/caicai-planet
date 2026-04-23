@@ -5,7 +5,7 @@ const { recordEmailResult } = require('../utils/emailMonitor');
 
 // 调试：打印邮件配置
 logger.info('邮件配置加载:', {
-  email163: process.env.EMAIL_USER,
+  email163: process.env.EMAIL_163_USER,
   emailQQ: process.env.EMAIL_QQ_USER
 });
 
@@ -15,8 +15,8 @@ const transporter163 = nodemailer.createTransport({
   port: parseInt(process.env.EMAIL_PORT) || 465,
   secure: true,
   auth: {
-    user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || ''
+    user: process.env.EMAIL_163_USER || '',
+    pass: process.env.EMAIL_163_AUTH_CODE || ''
   },
   tls: {
     rejectUnauthorized: false
@@ -30,7 +30,7 @@ const transporterQQ = nodemailer.createTransport({
   secure: true,
   auth: {
     user: process.env.EMAIL_QQ_USER || '',
-    pass: process.env.EMAIL_QQ_PASS || ''
+    pass: process.env.EMAIL_QQ_AUTH_CODE || ''
   },
   tls: {
     rejectUnauthorized: false
