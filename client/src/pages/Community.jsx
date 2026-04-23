@@ -226,7 +226,7 @@ export default function Community() {
                               </div>
                             )}
                             <img
-                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `http://localhost:3002${post.author.avatar}`) : '/moren.png'}
+                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${post.author.avatar}`) : '/moren.png'}
                               alt={post.author?.nickname || post.author?.username}
                               className="w-10 h-10 rounded-full object-cover"
                               onError={(e) => {
@@ -264,7 +264,7 @@ export default function Community() {
 
                           {post.cover_image && (
                             <img
-                              src={post.cover_image.startsWith('http') ? post.cover_image : `http://localhost:3002${post.cover_image}`}
+                              src={post.cover_image.startsWith('http') ? post.cover_image : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${post.cover_image}`}
                               alt={post.title}
                               className="w-full h-48 object-cover rounded-xl mb-4"
                             />
@@ -333,7 +333,7 @@ export default function Community() {
                       className="block"
                     >
                       <img
-                        src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `http://localhost:3002${advertisement.image_url}`}
+                        src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${advertisement.image_url}`}
                         alt={advertisement.title}
                         className="w-full h-48 object-cover"
                       />

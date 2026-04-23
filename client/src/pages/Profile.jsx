@@ -319,7 +319,7 @@ export default function Profile() {
     formData.append('avatar', file);
 
     try {
-      const response = await fetch('http://localhost:3002/api/users/avatar', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/avatar`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

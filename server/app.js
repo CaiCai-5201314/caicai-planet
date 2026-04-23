@@ -197,8 +197,14 @@ app.post('/api/share/friend-link/verify', shareController.verifyShareLink);
 app.use('/api/authorization', authorizationRoutes);
 
 // 实验室路由
-const labRoutes = require('./routes/lab');
-app.use('/api/lab', labRoutes);
+console.log('Loading lab routes...');
+try {
+  const labRoutes = require('./routes/lab');
+  console.log('Lab routes loaded successfully!');
+  app.use('/api/lab', labRoutes);
+} catch (error) {
+  console.error('Error loading lab routes:', error);
+}
 
 // 错误日志记录路由（不需要认证）
 app.post('/api/error/log', async (req, res) => {

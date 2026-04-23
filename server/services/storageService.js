@@ -96,7 +96,7 @@ class StorageService {
   async uploadToQiniu(file, folder) {
     // 移除生产环境检查，允许在开发环境下测试
     console.log('开始七牛云上传...');
-    console.log('文件信息:', { originalname: file.originalname, size: file.size, path: file.path });
+    console.log('文件信息:', { originalname: file.originalname, size: file.size, path: file.path, buffer: file.buffer ? '存在' : '不存在' });
 
     try {
       const qiniu = require('qiniu');
@@ -118,18 +118,6 @@ class StorageService {
       const key = `${folder}/${fileName}`;
       console.log('上传路径:', key);
 
-      // 检查文件是否存在
-      if (!file.path) {
-        console.error('文件路径不存在，使用本地存储');
-        throw new Error('文件路径不存在');
-      }
-
-      // 检查文件是否存在
-      if (!fs.existsSync(file.path)) {
-        console.error('文件不存在:', file.path);
-        throw new Error('文件不存在');
-      }
-
       try {
         const mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
         const options = {
@@ -143,25 +131,54 @@ class StorageService {
         const formUploader = new qiniu.form_up.FormUploader();
         const putExtra = new qiniu.form_up.PutExtra();
 
-        return new Promise((resolve, reject) => {
-          formUploader.putFile(token, key, file.path, putExtra, (err, body, info) => {
-            if (err) {
-              console.error('七牛云上传错误:', err);
-              reject(err);
-              return;
-            }
-            console.log('七牛云上传响应:', { statusCode: info.statusCode, body });
-            if (info.statusCode === 200) {
-              const url = `${qiniuConfig.domain}/${key}`;
-              console.log('七牛云上传成功:', url);
-              resolve(url);
-            } else {
-              const error = new Error(`上传失败: ${info.statusCode}, 响应: ${JSON.stringify(body)}`);
-              console.error('七牛云上传失败:', error);
-              reject(error);
-            }
+        if (file.path && fs.existsSync(file.path)) {
+          // 使用文件路径上传
+          console.log('使用文件路径上传:', file.path);
+          return new Promise((resolve, reject) => {
+            formUploader.putFile(token, key, file.path, putExtra, (err, body, info) => {
+              if (err) {
+                console.error('七牛云上传错误:', err);
+                reject(err);
+                return;
+              }
+              console.log('七牛云上传响应:', { statusCode: info.statusCode, body });
+              if (info.statusCode === 200) {
+                const url = `${qiniuConfig.domain}/${key}`;
+                console.log('七牛云上传成功:', url);
+                resolve(url);
+              } else {
+                const error = new Error(`上传失败: ${info.statusCode}, 响应: ${JSON.stringify(body)}`);
+                console.error('七牛云上传失败:', error);
+                reject(error);
+              }
+            });
           });
-        });
+        } else if (file.buffer) {
+          // 使用文件缓冲区上传
+          console.log('使用文件缓冲区上传');
+          return new Promise((resolve, reject) => {
+            formUploader.put(token, key, file.buffer, putExtra, (err, body, info) => {
+              if (err) {
+                console.error('七牛云上传错误:', err);
+                reject(err);
+                return;
+              }
+              console.log('七牛云上传响应:', { statusCode: info.statusCode, body });
+              if (info.statusCode === 200) {
+                const url = `${qiniuConfig.domain}/${key}`;
+                console.log('七牛云上传成功:', url);
+                resolve(url);
+              } else {
+                const error = new Error(`上传失败: ${info.statusCode}, 响应: ${JSON.stringify(body)}`);
+                console.error('七牛云上传失败:', error);
+                reject(error);
+              }
+            });
+          });
+        } else {
+          console.error('文件路径和缓冲区都不存在，使用本地存储');
+          throw new Error('文件路径和缓冲区都不存在');
+        }
       } catch (qiniuError) {
         console.error('七牛云 SDK 错误:', qiniuError);
         throw qiniuError;

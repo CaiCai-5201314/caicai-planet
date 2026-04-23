@@ -1,11 +1,21 @@
 #!/bin/bash
-# 用法: bash switch.sh maintenance | bash switch.sh normal
+# 用法: bash switch.sh maintenance [nginx_conf_dir] | bash switch.sh normal [nginx_conf_dir]
 
 MODE=$1
+NGINX_CONF_DIR=$2
 PROJECT_DIR="/opt/caicai-planet"
 
 # 检查 Nginx 配置文件路径
-if [ -d "/etc/nginx/sites-available" ]; then
+if [ -n "$NGINX_CONF_DIR" ]; then
+    # 手动指定配置目录
+    if [ -d "$NGINX_CONF_DIR" ]; then
+        echo "🔍 使用手动指定的 Nginx 配置目录: $NGINX_CONF_DIR"
+        SITE_CONF="$NGINX_CONF_DIR/caicai.conf"
+    else
+        echo "❌ 手动指定的 Nginx 配置目录不存在: $NGINX_CONF_DIR"
+        exit 1
+    fi
+elif [ -d "/etc/nginx/sites-available" ]; then
     # Debian/Ubuntu 系统
     NGINX_CONF_DIR="/etc/nginx/sites-available"
     SITE_CONF="$NGINX_CONF_DIR/caicai.conf"
@@ -17,8 +27,17 @@ elif [ -d "/opt/1panel/apps/openresty/openresty/nginx/conf.d" ]; then
     # 1Panel OpenResty
     NGINX_CONF_DIR="/opt/1panel/apps/openresty/openresty/nginx/conf.d"
     SITE_CONF="$NGINX_CONF_DIR/caicai.conf"
+elif [ -d "/usr/local/nginx/conf" ]; then
+    # 自定义安装的 Nginx
+    NGINX_CONF_DIR="/usr/local/nginx/conf"
+    SITE_CONF="$NGINX_CONF_DIR/caicai.conf"
+elif [ -d "/usr/local/openresty/nginx/conf" ]; then
+    # 自定义安装的 OpenResty
+    NGINX_CONF_DIR="/usr/local/openresty/nginx/conf"
+    SITE_CONF="$NGINX_CONF_DIR/caicai.conf"
 else
     echo "❌ 找不到 Nginx 配置目录"
+    echo "ℹ️  请手动指定 Nginx 配置目录，例如: bash scripts/switch.sh maintenance /path/to/nginx/conf"
     exit 1
 fi
 
