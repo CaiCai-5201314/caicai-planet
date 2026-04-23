@@ -29,8 +29,8 @@ export default function UserTaskManagement() {
       }
 
       const response = await api.get(`/admin/user-tasks?${params.toString()}`);
-      setUserTasks(response.data.userTasks);
-      setTotalPages(response.data.pagination.totalPages);
+      setUserTasks(response.data?.userTasks || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取用户任务列表失败:', error);
       toast.error('获取用户任务列表失败');
@@ -86,9 +86,65 @@ export default function UserTaskManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">用户任务管理</h2>
+      </div>
+
+      {/* 统计信息 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+              <FiTarget className="text-blue-600" size={24} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                {userTasks.filter(t => t.status === 'accepted').length}
+              </div>
+              <div className="text-sm text-gray-500">进行中</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+              <FiCheckCircle className="text-green-600" size={24} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                {userTasks.filter(t => t.status === 'completed').length}
+              </div>
+              <div className="text-sm text-gray-500">已完成</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+              <FiXCircle className="text-gray-600" size={24} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                {userTasks.filter(t => t.status === 'cancelled').length}
+              </div>
+              <div className="text-sm text-gray-500">已取消</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+              <FiUser className="text-purple-600" size={24} />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-gray-900">
+                {new Set(userTasks.map(t => t.user_id)).size}
+              </div>
+              <div className="text-sm text-gray-500">参与用户</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 筛选栏 */}
@@ -126,15 +182,17 @@ export default function UserTaskManagement() {
       </div>
 
       {/* 任务列表 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-grow flex flex-col">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-planet-purple" />
           </div>
         ) : filteredTasks.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-6xl mb-4">📋</div>
-            <p>暂无用户任务记录</p>
+          <div className="flex-grow flex items-center justify-center">
+            <div className="text-center text-gray-500">
+              <div className="text-6xl mb-4">📋</div>
+              <p>暂无用户任务记录</p>
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -155,9 +213,12 @@ export default function UserTaskManagement() {
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
                         <img
-                          src={userTask.user?.avatar || '/uploads/avatars/default.png'}
+                          src={(userTask.user?.avatar && userTask.user.avatar.length > 0 && userTask.user.avatar !== '/uploads/avatars/default.png') ? userTask.user.avatar : '/moren.png'}
                           alt={userTask.user?.nickname || userTask.user?.username}
                           className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.src = '/moren.png';
+                          }}
                         />
                         <div>
                           <div className="font-medium text-gray-900">
@@ -228,13 +289,13 @@ export default function UserTaskManagement() {
         )}
 
         {/* 分页 */}
-        {!loading && totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-center">
-            <nav className="flex items-center space-x-1">
+        {!loading && (
+          <div className="px-6 py-6 border-t border-gray-100 flex items-center justify-center mt-auto">
+            <nav className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 上一页
               </button>
@@ -253,7 +314,7 @@ export default function UserTaskManagement() {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 rounded-md border ${currentPage === pageNum
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
                       ? 'bg-planet-purple text-white border-planet-purple'
                       : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
@@ -265,69 +326,13 @@ export default function UserTaskManagement() {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               >
                 下一页
               </button>
             </nav>
           </div>
         )}
-      </div>
-
-      {/* 统计信息 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <FiTarget className="text-blue-600" size={24} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
-                {userTasks.filter(t => t.status === 'accepted').length}
-              </div>
-              <div className="text-sm text-gray-500">进行中</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-              <FiCheckCircle className="text-green-600" size={24} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
-                {userTasks.filter(t => t.status === 'completed').length}
-              </div>
-              <div className="text-sm text-gray-500">已完成</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
-              <FiXCircle className="text-gray-600" size={24} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
-                {userTasks.filter(t => t.status === 'cancelled').length}
-              </div>
-              <div className="text-sm text-gray-500">已取消</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <FiUser className="text-purple-600" size={24} />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-gray-900">
-                {new Set(userTasks.map(t => t.user_id)).size}
-              </div>
-              <div className="text-sm text-gray-500">参与用户</div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

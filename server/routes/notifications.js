@@ -3,6 +3,9 @@ const router = express.Router();
 const notificationController = require('../controllers/notificationController');
 const { auth } = require('../middleware/auth');
 
+// 获取未读通知数量
+router.get('/unread-count', auth, notificationController.getUnreadCount);
+
 // 获取用户通知
 router.get('/', auth, notificationController.getUserNotifications);
 

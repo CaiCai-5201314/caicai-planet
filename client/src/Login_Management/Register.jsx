@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft, FiShield } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft, FiShield, FiRefreshCw } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -11,15 +11,46 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    nickname: '',
-    verificationCode: ''
+    verificationCode: '',
+    captchaCode: '',
+    captchaId: ''
   });
+  const [captchaImage, setCaptchaImage] = useState('');
+  const [isLoadingCaptcha, setIsLoadingCaptcha] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const navigate = useNavigate();
   const { register } = useAuthStore();
+
+  // 获取图像验证码
+  const fetchCaptcha = async () => {
+    setIsLoadingCaptcha(true);
+    try {
+      const response = await api.get('/verification/captcha');
+      if (response.data.success) {
+        setCaptchaImage(response.data.data.image);
+        setFormData(prev => ({
+          ...prev,
+          captchaId: response.data.data.id,
+          captchaCode: ''
+        }));
+      } else {
+        toast.error('获取验证码失败');
+      }
+    } catch (error) {
+      toast.error('获取验证码失败');
+    } finally {
+      setIsLoadingCaptcha(false);
+    }
+  };
+
+  // 刷新验证码
+  const handleRefreshCaptcha = () => {
+    fetchCaptcha();
+  };
 
   useEffect(() => {
     let timer;
@@ -30,6 +61,11 @@ export default function Register() {
     }
     return () => clearInterval(timer);
   }, [countdown]);
+
+  // 组件挂载时获取验证码
+  useEffect(() => {
+    fetchCaptcha();
+  }, []);
 
   const handleSendCode = async () => {
     if (!formData.email) {
@@ -45,7 +81,7 @@ export default function Register() {
 
     setIsSendingCode(true);
     try {
-      const response = await api.post('/verification/send', { email: formData.email });
+      const response = await api.post('/verification/send', { email: formData.email, type: 'register' });
       toast.success(response.data.message || '验证码已发送');
       setCountdown(60);
     } catch (error) {
@@ -68,6 +104,20 @@ export default function Register() {
       return;
     }
 
+    if (!formData.captchaCode) {
+      toast.error('请输入图像验证码');
+      return;
+    }
+
+    // 如果邮箱验证码字段未显示，则显示它并自动发送验证码
+    if (!showEmailVerification) {
+      setShowEmailVerification(true);
+      // 自动发送邮箱验证码
+      handleSendCode();
+      return;
+    }
+
+    // 邮箱验证码字段显示后，验证邮箱验证码
     if (!formData.verificationCode) {
       toast.error('请输入邮箱验证码');
       return;
@@ -79,8 +129,9 @@ export default function Register() {
       username: formData.username,
       email: formData.email,
       password: formData.password,
-      nickname: formData.nickname || formData.username,
-      verificationCode: formData.verificationCode
+      verificationCode: formData.verificationCode,
+      captchaCode: formData.captchaCode,
+      captchaId: formData.captchaId
     });
 
     if (result.success) {
@@ -88,6 +139,7 @@ export default function Register() {
       navigate('/');
     } else {
       toast.error(result.error || '注册失败');
+      fetchCaptcha(); // 刷新验证码
     }
 
     setIsLoading(false);
@@ -146,22 +198,22 @@ export default function Register() {
             </p>
           </div>
 
-          <div className="mt-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="mt-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   用户名 *
                 </label>
                 <div className="relative">
-                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
                     required
                     autoComplete="username"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    className="input-field pl-12"
-                    placeholder="3-50个字符，支持字母、数字、下划线"
+                    className="input-field pl-10"
+                    placeholder="3-50个字符"
                     minLength={3}
                     maxLength={50}
                   />
@@ -169,107 +221,134 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   邮箱 *
                 </label>
                 <div className="relative">
-                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="email"
                     required
                     autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="input-field pl-12"
+                    className="input-field pl-10"
                     placeholder="请输入邮箱地址"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  邮箱验证码 *
-                </label>
-                <div className="flex space-x-3">
-                  <div className="relative flex-1">
-                    <FiShield className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.verificationCode}
-                      onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
-                      className="input-field pl-12"
-                      placeholder="请输入6位验证码"
-                      maxLength={6}
-                    />
+              {showEmailVerification && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    邮箱验证码 *
+                  </label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        required
+                        value={formData.verificationCode}
+                        onChange={(e) => setFormData({ ...formData, verificationCode: e.target.value })}
+                        className="input-field pl-10"
+                        placeholder="6位验证码"
+                        maxLength={6}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSendCode}
+                      disabled={isSendingCode || countdown > 0}
+                      className="px-3 py-2 bg-planet-purple text-white rounded-xl text-sm font-medium hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}秒` : '获取验证码'}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={isSendingCode || countdown > 0}
-                    className="px-4 py-2 bg-planet-purple text-white rounded-xl font-medium hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                  >
-                    {isSendingCode ? '发送中...' : countdown > 0 ? `${countdown}秒后重试` : '获取验证码'}
-                  </button>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  昵称
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                图像验证码 *
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    value={formData.nickname}
-                    onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                    className="input-field pl-12"
-                    placeholder="显示名称（可选，默认为用户名）"
-                    maxLength={50}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  密码 *
-                </label>
-                <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
                     required
-                    autoComplete="new-password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="input-field pl-12 pr-12"
-                    placeholder="至少6个字符"
-                    minLength={6}
+                    value={formData.captchaCode}
+                    onChange={(e) => setFormData({ ...formData, captchaCode: e.target.value })}
+                    className="input-field pl-10"
+                    placeholder="4位验证码"
+                    maxLength={4}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <FiEyeOff /> : <FiEye />}
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleRefreshCaptcha}
+                  disabled={isLoadingCaptcha}
+                  className="flex items-center justify-center w-24 h-10 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoadingCaptcha ? (
+                    <span className="text-sm">加载中...</span>
+                  ) : (
+                    <>
+                      {captchaImage ? (
+                        <img
+                          src={captchaImage}
+                          alt="验证码"
+                          className="h-10 w-24 object-contain"
+                        />
+                      ) : (
+                        <span className="text-sm">获取验证码</span>
+                      )}
+                    </>
+                  )}
+                </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                密码 *
+              </label>
+              <div className="relative">
+                <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="input-field pl-10 pr-10"
+                  placeholder="至少6个字符"
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                </button>
+              </div>
+            </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   确认密码 *
                 </label>
                 <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
                     autoComplete="new-password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="input-field pl-12"
+                    className="input-field pl-10"
                     placeholder="请再次输入密码"
                   />
                 </div>
@@ -282,21 +361,17 @@ export default function Register() {
                   className="rounded border-gray-300 text-planet-purple focus:ring-planet-purple"
                 />
                 <span className="ml-2 text-sm text-gray-600">
-                  我同意{' '}
-                  <Link to="/terms" className="text-planet-purple hover:text-planet-pink">
-                    服务条款
-                  </Link>
-                  {' '}和{' '}
-                  <Link to="/privacy" className="text-planet-purple hover:text-planet-pink">
-                    隐私政策
-                  </Link>
+                  我同意
+                  <Link to="/terms" className="text-planet-purple hover:text-planet-pink"> 服务条款 </Link>
+                  和
+                  <Link to="/privacy" className="text-planet-purple hover:text-planet-pink"> 隐私政策</Link>
                 </span>
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-planet-purple/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-planet-purple/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? '注册中...' : '创建账号'}
               </button>

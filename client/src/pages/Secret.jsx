@@ -10,10 +10,7 @@ export default function Secret() {
           <h1 className="text-4xl font-bold mb-8 text-center">隐秘星球</h1>
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-xl">
             <p className="text-lg mb-6">
-              这里是隐秘星球，一个神秘的地方。内容待定...
-            </p>
-            <p className="text-gray-300">
-              敬请期待更多精彩内容！
+              更多奖励机制，等级，后续玩法正在陆续加入中
             </p>
           </div>
         </div>

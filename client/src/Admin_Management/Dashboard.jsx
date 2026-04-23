@@ -3,18 +3,27 @@ import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
   FiHome, FiUsers, FiFileText, FiMessageSquare, FiLink, FiLogOut,
   FiTrendingUp, FiActivity, FiCalendar, FiMoreVertical, FiEdit2,
-  FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX,
+  FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX, FiTrash2,
   FiCamera, FiSave, FiCheck, FiAlertCircle, FiSettings, FiShield, FiAlertTriangle,
-  FiTarget, FiLayers
+  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar, FiMenu
 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import SiteConfig from './SiteConfig';
-import ErrorManagement from './ErrorManagement';
+import AdvertisementManagement from './AdvertisementManagement';
+import ErrorLogManagement from './ErrorLogManagement';
+
 import TaskCenterManagement from './TaskCenterManagement';
 import TaskTypeManagement from './TaskTypeManagement';
 import UserTaskManagement from './UserTaskManagement';
+import AnnouncementManagement from './AnnouncementManagement';
+import AuthorizationManagement from './AuthorizationManagement';
+import CheckInManagement from './CheckInManagement';
+import MoonCenterManagement from './MoonCenterManagement';
+import MoonPointRequestManagement from './MoonPointRequestManagement';
+import MoonPointRuleManagement from './MoonPointRuleManagement';
+import ExpManagement from './ExpManagement';
 
 // 友链管理组件
 function FriendLinkManagement() {
@@ -28,20 +37,25 @@ function FriendLinkManagement() {
     url: '',
     avatar: '',
     description: '',
-    category: 'other',
     reciprocal_url: ''
   });
+  const [showShareModal, setShowShareModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchFriendLinks();
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, currentPage]);
 
   const fetchFriendLinks = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 20
+      });
       if (searchTerm) {
         params.append('search', searchTerm);
       }
@@ -49,7 +63,8 @@ function FriendLinkManagement() {
         params.append('status', statusFilter);
       }
       const response = await api.get(`/admin/friend-links?${params.toString()}`);
-      setFriendLinks(response.data.friendLinks);
+      setFriendLinks(response.data?.friendLinks || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取友链列表失败:', error);
       toast.error('获取友链列表失败');
@@ -81,7 +96,6 @@ function FriendLinkManagement() {
         url: '',
         avatar: '',
         description: '',
-        category: 'other',
         reciprocal_url: ''
       });
       fetchFriendLinks();
@@ -129,6 +143,41 @@ function FriendLinkManagement() {
       }
     }
   };
+  
+  // 生成外链接
+  const handleGenerateShareLink = async () => {
+    try {
+      const response = await api.post(`/admin/friend-links/${currentLink.id}/share`, {
+        friendLinkId: currentLink.id
+      });
+      toast.success('外链接生成成功');
+      setShowShareModal(false);
+      fetchFriendLinks();
+    } catch (error) {
+      console.error('生成外链接失败:', error);
+      toast.error('生成外链接失败');
+    }
+  };
+  
+  // 重置外链接
+  const handleResetShareLink = async (id) => {
+    if (window.confirm('确定要重置这个友链的外链接吗？')) {
+      try {
+        await api.post(`/admin/friend-links/${id}/share/reset`);
+        toast.success('外链接已重置');
+        fetchFriendLinks();
+      } catch (error) {
+        console.error('重置外链接失败:', error);
+        toast.error('重置外链接失败');
+      }
+    }
+  };
+  
+  // 打开分享模态框
+  const openShareModal = (link) => {
+    setCurrentLink(link);
+    setShowShareModal(true);
+  };
 
   const handleApproveLink = async (id, status) => {
     try {
@@ -175,7 +224,7 @@ function FriendLinkManagement() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">友链管理</h2>
         <button
@@ -186,7 +235,7 @@ function FriendLinkManagement() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-grow flex flex-col">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div>
             <input
@@ -227,9 +276,12 @@ function FriendLinkManagement() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
                     <img
-                      src={link.avatar || '/uploads/avatars/default.png'}
+                      src={(link.avatar && link.avatar.length > 0 && link.avatar !== '/uploads/avatars/default.png') ? link.avatar : '/moren.png'}
                       alt={link.name}
                       className="w-12 h-12 rounded-lg object-cover"
+                      onError={(e) => {
+                        e.target.src = '/moren.png';
+                      }}
                     />
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
@@ -249,11 +301,8 @@ function FriendLinkManagement() {
                         {link.description || '无描述'}
                       </div>
                       <div className="mt-2 text-gray-500 text-xs">
-                        <span className="bg-gray-100 px-2 py-1 rounded">
-                          {categoryMap[link.category]}
-                        </span>
                         {link.reciprocal_url && (
-                          <span className="ml-2 text-blue-500">
+                          <span className="text-blue-500">
                             回链: {link.reciprocal_url}
                           </span>
                         )}
@@ -272,12 +321,47 @@ function FriendLinkManagement() {
                         编辑
                       </button>
                       <button
+                        onClick={() => openShareModal(link)}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      >
+                        分享
+                      </button>
+                      {link.share_code && (
+                        <button
+                          onClick={() => handleResetShareLink(link.id)}
+                          className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition-colors"
+                        >
+                          重置外链接
+                        </button>
+                      )}
+                      <button
                         onClick={() => handleDeleteLink(link.id)}
                         className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                       >
                         删除
                       </button>
                     </div>
+                    {link.share_code && (
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="flex items-center justify-between">
+                          <span>短链接: {link.shortUrl || `${window.location.origin}/short/${link.share_code}`}</span>
+                          <button
+                            onClick={() => {
+                              const shortUrl = link.shortUrl || `${window.location.origin}/short/${link.share_code}`;
+                              navigator.clipboard.writeText(shortUrl).then(() => {
+                                alert('短链接已复制到剪贴板');
+                              });
+                            }}
+                            className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors ml-2"
+                          >
+                            复制
+                          </button>
+                        </div>
+                        {link.share_expires_at && (
+                          <div>有效期: {new Date(link.share_expires_at).toLocaleString()}</div>
+                        )}
+                      </div>
+                    )}
                     {link.status === 'pending' && (
                       <div className="flex space-x-2">
                         <button
@@ -298,6 +382,52 @@ function FriendLinkManagement() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 分页 */}
+        {!loading && (
+          <div className="mt-6 flex items-center justify-center mt-auto py-6 border-t border-gray-100">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                下一页
+              </button>
+            </nav>
           </div>
         )}
       </div>
@@ -330,13 +460,53 @@ function FriendLinkManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站Logo</label>
-                <input
-                  type="text"
-                  value={newLink.avatar}
-                  onChange={(e) => setNewLink({ ...newLink, avatar: e.target.value })}
-                  placeholder="请输入Logo URL"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
+                <div className="flex items-center space-x-4">
+                  {newLink.avatar && (
+                    <img
+                      src={newLink.avatar}
+                      alt="Logo预览"
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={newLink.avatar}
+                      onChange={(e) => setNewLink({ ...newLink, avatar: e.target.value })}
+                      placeholder="请输入Logo URL或上传图片"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
+                    />
+                    <label className="flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+                      <FiCamera className="mr-2" />
+                      <span>上传图片</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          try {
+                            const response = await api.post('/upload/friend-links', formData, {
+                              headers: {
+                                'Content-Type': 'multipart/form-data'
+                              }
+                            });
+                            setNewLink({ ...newLink, avatar: response.data.url });
+                            toast.success('图片上传成功');
+                          } catch (error) {
+                            console.error('上传失败:', error);
+                            toast.error('图片上传失败');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站描述</label>
@@ -347,20 +517,6 @@ function FriendLinkManagement() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                <select
-                  value={newLink.category}
-                  onChange={(e) => setNewLink({ ...newLink, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">回链URL</label>
@@ -419,13 +575,53 @@ function FriendLinkManagement() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站Logo</label>
-                <input
-                  type="text"
-                  value={currentLink.avatar}
-                  onChange={(e) => setCurrentLink({ ...currentLink, avatar: e.target.value })}
-                  placeholder="请输入Logo URL"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                />
+                <div className="flex items-center space-x-4">
+                  {currentLink.avatar && (
+                    <img
+                      src={currentLink.avatar}
+                      alt="Logo预览"
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={currentLink.avatar}
+                      onChange={(e) => setCurrentLink({ ...currentLink, avatar: e.target.value })}
+                      placeholder="请输入Logo URL或上传图片"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
+                    />
+                    <label className="flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors cursor-pointer">
+                      <FiCamera className="mr-2" />
+                      <span>上传图片</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          try {
+                            const response = await api.post('/upload/friend-links', formData, {
+                              headers: {
+                                'Content-Type': 'multipart/form-data'
+                              }
+                            });
+                            setCurrentLink({ ...currentLink, avatar: response.data.url });
+                            toast.success('图片上传成功');
+                          } catch (error) {
+                            console.error('上传失败:', error);
+                            toast.error('图片上传失败');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站描述</label>
@@ -436,20 +632,6 @@ function FriendLinkManagement() {
                   rows={3}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">分类</label>
-                <select
-                  value={currentLink.category}
-                  onChange={(e) => setCurrentLink({ ...currentLink, category: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">回链URL</label>
@@ -473,6 +655,40 @@ function FriendLinkManagement() {
                   className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
                 >
                   保存
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 生成外链接模态框 */}
+      {showShareModal && currentLink && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">生成外链接</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">友链名称</label>
+                <input
+                  type="text"
+                  value={currentLink.name}
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleGenerateShareLink}
+                  className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
+                >
+                  生成外链接
                 </button>
               </div>
             </div>
@@ -520,9 +736,12 @@ function CommentList({ type, comments, loading, onStatusChange, onDelete, onRepl
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
               <img
-                src={comment.user?.avatar || '/uploads/avatars/default.png'}
+                src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? comment.user.avatar : '/moren.png'}
                 alt={comment.user?.nickname || comment.user?.username}
                 className="w-10 h-10 rounded-full object-cover"
+                onError={(e) => {
+                  e.target.src = '/moren.png';
+                }}
               />
               <div className="flex-1">
                 <div className="flex items-center space-x-2">
@@ -552,9 +771,12 @@ function CommentList({ type, comments, loading, onStatusChange, onDelete, onRepl
                     {comment.replies.slice(0, 2).map((reply) => (
                       <div key={reply.id} className="flex items-start space-x-2 p-2 bg-gray-50 rounded-lg text-sm">
                         <img
-                          src={reply.user?.avatar || '/uploads/avatars/default.png'}
+                          src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? reply.user.avatar : '/moren.png'}
                           alt={reply.user?.nickname || reply.user?.username}
                           className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.src = '/moren.png';
+                          }}
                         />
                         <div>
                           <div className="font-medium text-gray-900">
@@ -662,11 +884,11 @@ function CommentManagement() {
       }
       const response = await api.get(`/admin/comments?${params.toString()}`);
       if (activeTab === 'post') {
-        setPostComments(response.data.comments);
+        setPostComments(response.data?.comments || []);
       } else {
-        setTaskComments(response.data.comments);
+        setTaskComments(response.data?.comments || []);
       }
-      setTotalPages(response.data.pagination.totalPages);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取评论列表失败:', error);
       toast.error('获取评论列表失败');
@@ -736,15 +958,15 @@ function CommentManagement() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-2xl font-bold text-gray-900">评论管理</h2>
       </div>
 
       {/* 标签页 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex-grow flex flex-col">
+        <div className="border-b border-gray-200 overflow-x-auto">
+          <nav className="flex space-x-4 md:space-x-8 px-4 md:px-6 min-w-max" aria-label="Tabs">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -753,7 +975,7 @@ function CommentManagement() {
                   setCurrentPage(1);
                 }}
                 className={`
-                  py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap
+                  py-4 px-2 md:px-1 border-b-2 font-medium text-sm whitespace-nowrap
                   ${activeTab === tab.key
                     ? 'border-planet-purple text-planet-purple'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -771,9 +993,9 @@ function CommentManagement() {
           </nav>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6 flex-grow flex flex-col">
           {/* 筛选栏 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div>
               <input
                 type="text"
@@ -809,50 +1031,50 @@ function CommentManagement() {
           />
 
           {/* 分页 */}
-          {!loading && totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-center">
-              <nav className="flex items-center space-x-1">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  上一页
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-1 rounded-md border ${currentPage === pageNum
-                        ? 'bg-planet-purple text-white border-planet-purple'
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  下一页
-                </button>
-              </nav>
-            </div>
-          )}
+        {!loading && (
+          <div className="mt-6 flex items-center justify-center mt-auto py-6 border-t border-gray-100">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                下一页
+              </button>
+            </nav>
+          </div>
+        )}
         </div>
       </div>
 
@@ -864,9 +1086,12 @@ function CommentManagement() {
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-2 mb-2">
                 <img
-                  src={currentComment.user?.avatar || '/uploads/avatars/default.png'}
+                  src={(currentComment.user?.avatar && currentComment.user.avatar.length > 0 && currentComment.user.avatar !== '/uploads/avatars/default.png') ? currentComment.user.avatar : '/moren.png'}
                   alt={currentComment.user?.nickname || currentComment.user?.username}
                   className="w-8 h-8 rounded-full object-cover"
+                  onError={(e) => {
+                    e.target.src = '/moren.png';
+                  }}
                 />
                 <span className="font-medium text-gray-900">
                   {currentComment.user?.nickname || currentComment.user?.username}
@@ -927,6 +1152,8 @@ function BannedWords() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   // 批量添加相关状态
   const [bulkWords, setBulkWords] = useState('');
   const [bulkCategory, setBulkCategory] = useState('other');
@@ -938,12 +1165,15 @@ function BannedWords() {
   useEffect(() => {
     fetchBannedWords();
     fetchBannedWordStats();
-  }, [categoryFilter, levelFilter]);
+  }, [categoryFilter, levelFilter, currentPage, searchTerm]);
 
   const fetchBannedWords = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 20
+      });
       if (categoryFilter) {
         params.append('category', categoryFilter);
       }
@@ -954,7 +1184,8 @@ function BannedWords() {
         params.append('search', searchTerm);
       }
       const response = await api.get(`/admin/banned-words?${params.toString()}`);
-      setWords(response.data.words);
+      setWords(response.data?.words || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取违禁词列表失败:', error);
       toast.error('获取违禁词列表失败');
@@ -1155,7 +1386,7 @@ function BannedWords() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">违禁词管理</h2>
         <div className="flex space-x-3">
@@ -1216,7 +1447,7 @@ function BannedWords() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-grow flex flex-col">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
             <input
@@ -1312,6 +1543,52 @@ function BannedWords() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        
+        {/* 分页 */}
+        {!loading && (
+          <div className="mt-6 flex items-center justify-center mt-auto py-6 border-t border-gray-100">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                下一页
+              </button>
+            </nav>
           </div>
         )}
       </div>
@@ -1567,6 +1844,8 @@ function BannedWords() {
 function AdminLayout({ children }) {
   const location = useLocation();
   const { logout, user, isAuthenticated, fetchUser } = useAuthStore();
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // 调试信息
   console.log('AdminLayout - user:', user);
@@ -1578,35 +1857,138 @@ function AdminLayout({ children }) {
     fetchUser();
   }
 
-  const menuItems = [
-    { path: '/admin', icon: FiHome, label: '仪表盘' },
-    { path: '/admin/users', icon: FiUsers, label: '用户管理' },
-    { path: '/admin/posts', icon: FiFileText, label: '文章管理' },
-    { path: '/admin/comments', icon: FiMessageSquare, label: '评论管理' },
-    { path: '/admin/friend-links', icon: FiLink, label: '友链管理' },
-    { path: '/admin/banned-words', icon: FiShield, label: '违禁词管理' },
-    { path: '/admin/task-types', icon: FiLayers, label: '任务类型管理' },
-    { path: '/admin/task-center', icon: FiTarget, label: '任务中心管理' },
-    { path: '/admin/user-tasks', icon: FiUsers, label: '用户任务管理' },
-    { path: '/admin/error-management', icon: FiAlertCircle, label: '错误管理' },
-    { path: '/admin/site-configs', icon: FiSettings, label: '网站配置' },
-  ];
+  // 根据用户角色和权限过滤菜单项目
+  const getMenuItems = () => {
+    const allMenuItems = [
+      { path: '/admin-caicai0304', icon: FiHome, label: '仪表盘', permission: 'dashboard' },
+      { 
+        label: '用户中心', 
+        icon: FiUsers, 
+        permission: 'userManagement',
+        children: [
+          { path: '/admin-caicai0304/users', label: '用户管理', permission: 'userManagement' },
+          { path: '/admin-caicai0304/authorization', label: '授权中心', permission: 'authorization' },
+          { path: '/admin-caicai0304/check-ins', label: '打卡记录管理', permission: 'checkInManagement' }
+        ]
+      },
+      { 
+        label: '社区中心', 
+        icon: FiFileText, 
+        permission: 'postManagement',
+        children: [
+          { path: '/admin-caicai0304/posts', label: '文章管理', permission: 'postManagement' },
+          { path: '/admin-caicai0304/comments', label: '评论管理', permission: 'commentManagement' },
+          { path: '/admin-caicai0304/banned-words', label: '违禁词管理', permission: 'bannedWordManagement' }
+        ]
+      },
+      { 
+        label: '月球分中心', 
+        icon: FiMoon, 
+        permission: 'moonCenterManagement',
+        children: [
+          { path: '/admin-caicai0304/moon-centers', label: '月球分管理', permission: 'moonCenterManagement' },
+          { path: '/admin-caicai0304/moon-point-requests', label: '月球分审核', permission: 'moonPointRequestManagement' },
+          { path: '/admin-caicai0304/moon-point-rules', label: '月球分规则', permission: 'moonPointRuleManagement' },
+          { path: '/admin-caicai0304/exp-management', label: '经验值管理', permission: 'expManagement' }
+        ]
+      },
+      { 
+        label: '任务中心', 
+        icon: FiMoon, 
+        permission: 'taskCenter',
+        children: [
+          { path: '/admin-caicai0304/task-types', label: '任务类型管理', permission: 'taskTypeManagement' },
+          { path: '/admin-caicai0304/task-center', label: '任务中心管理', permission: 'taskCenter' },
+          { path: '/admin-caicai0304/user-tasks', label: '用户任务管理', permission: 'userTaskManagement' }
+        ]
+      },
+      { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
+      { path: '/admin-caicai0304/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
+      { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
+      { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
+      { path: '/admin-caicai0304/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
+    ];
+
+    // 管理员显示所有菜单
+    if (user?.role === 'admin') {
+      return allMenuItems;
+    }
+
+    // 子权限账号根据权限显示菜单
+    if (user?.role === 'sub_admin') {
+      return allMenuItems.filter(item => {
+        if (item.children) {
+          // 对于有子菜单的项目，检查是否有任何子菜单有权限
+          const hasPermission = item.children.some(child => user.permissions?.[child.permission]);
+          if (hasPermission) {
+            // 过滤子菜单，只显示有权限的
+            item.children = item.children.filter(child => user.permissions?.[child.permission]);
+          }
+          return hasPermission;
+        }
+        return user.permissions?.[item.permission];
+      });
+    }
+
+    // 默认返回空数组
+    return [];
+  };
+
+  const menuItems = getMenuItems();
+
+  // 检查当前路径是否在子菜单中
+  const isActive = (item) => {
+    if (item.children) {
+      return item.children.some(child => location.pathname === child.path);
+    }
+    return location.pathname === item.path;
+  };
+
+  // 切换下拉菜单
+  const toggleDropdown = (label) => {
+    setOpenDropdown(openDropdown === label ? null : label);
+  };
 
   if (!user) {
     console.log('AdminLayout - no user, redirecting to login');
-    return <Navigate to="/admin/login" />;
+    return <Navigate to="/admin-caicai0304/login" />;
   }
 
-  if (user?.role !== 'admin') {
-    console.log('AdminLayout - not admin, redirecting to login');
-    return <Navigate to="/admin/login" />;
+  if (user?.role !== 'admin' && user?.role !== 'sub_admin') {
+    console.log('AdminLayout - not admin or sub_admin, redirecting to login');
+    return <Navigate to="/admin-caicai0304/login" />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <aside className="w-64 bg-white border-r border-gray-200 fixed h-full">
+    <div className="min-h-screen bg-gray-50 flex overflow-hidden">
+      {/* 移动端遮罩层 */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* 侧边栏 */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:block ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <div className="p-6">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between lg:hidden">
+            <div className="flex items-center space-x-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+                <span className="text-white font-bold">菜</span>
+              </div>
+              <span className="font-bold text-xl">后台管理</span>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-2 text-gray-600 hover:text-gray-900"
+            >
+              <FiX size={24} />
+            </button>
+          </div>
+          <div className="hidden lg:flex items-center space-x-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
               <span className="text-white font-bold">菜</span>
             </div>
@@ -1614,24 +1996,68 @@ function AdminLayout({ children }) {
           </div>
         </div>
 
-        <nav className="px-4 pb-4">
+        <nav className="px-4 pb-20 space-y-1 overflow-y-auto">
           {menuItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-xl mb-1 transition-colors ${
-                location.pathname === item.path
-                  ? 'bg-planet-purple/10 text-planet-purple'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <item.icon size={20} />
-              <span className="font-medium">{item.label}</span>
-            </Link>
+            <div key={item.path || item.label}>
+              {item.children ? (
+                <>
+                  <button
+                    onClick={() => toggleDropdown(item.label)}
+                    className={`flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors ${
+                      isActive(item)
+                        ? 'bg-planet-purple/10 text-planet-purple'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <item.icon size={20} />
+                      <span className="font-medium">{item.label}</span>
+                    </div>
+                    <FiChevronRight 
+                      size={16} 
+                      className={`transition-transform ${
+                        openDropdown === item.label ? 'rotate-90' : ''
+                      }`} 
+                    />
+                  </button>
+                  {openDropdown === item.label && (
+                    <div className="pl-10 pr-4 py-2 space-y-1">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.path}
+                          to={child.path}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`block px-4 py-2 rounded-xl transition-colors ${
+                            location.pathname === child.path
+                              ? 'bg-planet-purple/10 text-planet-purple'
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
+                    location.pathname === item.path
+                      ? 'bg-planet-purple/10 text-planet-purple'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <item.icon size={20} />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              )}
+            </div>
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
           <button
             onClick={logout}
             className="flex items-center space-x-3 px-4 py-3 w-full text-red-600 hover:bg-red-50 rounded-xl transition-colors"
@@ -1642,28 +2068,29 @@ function AdminLayout({ children }) {
         </div>
       </aside>
 
-      <main className="flex-1 ml-64">
-        <header className="bg-white border-b border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">菜菜星球管理后台</h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-600">{user?.nickname || user?.username}</span>
-              <img
-                src={user?.avatar && user.avatar.length > 0 ? user.avatar : 'https://via.placeholder.com/150'}
-                alt={user?.nickname || user?.username}
-                className="w-10 h-10 rounded-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/150';
-                }}
-              />
+      {/* 主内容区域 */}
+      <div className="flex-1 flex flex-col lg:ml-64">
+        {/* 移动端顶部栏 */}
+        <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-gray-200">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 text-gray-600 hover:text-gray-900"
+          >
+            <FiMenu size={24} />
+          </button>
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center">
+              <span className="text-white font-bold text-sm">菜</span>
             </div>
+            <span className="font-bold text-lg">后台管理</span>
           </div>
-        </header>
-
-        <div className="p-8">
+          <div className="w-10"></div>
+        </div>
+        {/* 内容区域 */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           {children}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
@@ -1759,21 +2186,21 @@ function DashboardHome() {
           value={stats.stats.userCount} 
           icon={FiUsers} 
           color="blue" 
-          trend={12}
+          trend={stats.stats.userTrend}
         />
         <StatCard 
           label="文章数量" 
           value={stats.stats.postCount} 
           icon={FiFileText} 
           color="green" 
-          trend={8}
+          trend={stats.stats.postTrend}
         />
         <StatCard 
           label="评论数量" 
           value={stats.stats.commentCount} 
           icon={FiMessageSquare} 
           color="yellow" 
-          trend={-3}
+          trend={stats.stats.commentTrend}
         />
         <StatCard 
           label="待审核友链" 
@@ -1792,7 +2219,7 @@ function DashboardHome() {
               <FiUsers className="mr-2 text-planet-purple" />
               最近注册用户
             </h3>
-            <Link to="/admin/users" className="text-sm text-planet-purple hover:text-planet-pink">
+            <Link to="/admin-caicai0304/users" className="text-sm text-planet-purple hover:text-planet-pink">
               查看全部
             </Link>
           </div>
@@ -1800,11 +2227,11 @@ function DashboardHome() {
             {stats.recentUsers?.length > 0 ? stats.recentUsers.map((user) => (
               <div key={user.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <img
-                  src={user.avatar && user.avatar.length > 0 ? user.avatar : 'https://via.placeholder.com/150'}
+                  src={(user.avatar && user.avatar.length > 0 && user.avatar !== '/uploads/avatars/default.png') ? user.avatar : '/moren.png'}
                   alt={user.nickname || user.username}
                   className="w-10 h-10 rounded-full object-cover"
                   onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/150';
+                    e.target.src = '/moren.png';
                   }}
                 />
                 <div className="flex-1 min-w-0">
@@ -1828,7 +2255,7 @@ function DashboardHome() {
               <FiFileText className="mr-2 text-green-500" />
               最近发布文章
             </h3>
-            <Link to="/admin/posts" className="text-sm text-planet-purple hover:text-planet-pink">
+            <Link to="/admin-caicai0304/posts" className="text-sm text-planet-purple hover:text-planet-pink">
               查看全部
             </Link>
           </div>
@@ -1946,11 +2373,14 @@ function UserEditModal({ user, isOpen, onClose, onSave, onAvatarUpload }) {
           {/* 头像上传 */}
           <div className="flex items-center space-x-4">
             <img
-              src={formData.avatar && formData.avatar.length > 0 ? formData.avatar : 'https://via.placeholder.com/150'}
+              src={formData.avatar && formData.avatar.length > 0 ? formData.avatar : '/moren.png'}
               alt="Avatar"
               className="w-16 h-16 rounded-full object-cover"
               onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/150';
+                if (!e.target.dataset.errorHandled) {
+                  e.target.dataset.errorHandled = 'true';
+                  e.target.src = '/moren.png';
+                }
               }}
             />
             <label className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200 transition-colors">
@@ -2148,16 +2578,57 @@ function UserManagement() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isBanModalOpen, setIsBanModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState(null);
+  const [deleteUserName, setDeleteUserName] = useState('');
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusUserId, setStatusUserId] = useState(null);
+  const [statusUserName, setStatusUserName] = useState('');
+  const [targetStatus, setTargetStatus] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('DESC');
+  const [lastLoginFrom, setLastLoginFrom] = useState('');
+  const [lastLoginTo, setLastLoginTo] = useState('');
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, searchTerm, statusFilter, roleFilter, sortBy, sortOrder, lastLoginFrom, lastLoginTo]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/users');
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 20
+      });
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      if (statusFilter) {
+        params.append('status', statusFilter);
+      }
+      if (roleFilter) {
+        params.append('role', roleFilter);
+      }
+      if (sortBy) {
+        params.append('sortBy', sortBy);
+      }
+      if (sortOrder) {
+        params.append('sortOrder', sortOrder);
+      }
+      if (lastLoginFrom) {
+        params.append('lastLoginFrom', lastLoginFrom);
+      }
+      if (lastLoginTo) {
+        params.append('lastLoginTo', lastLoginTo);
+      }
+      const response = await api.get(`/admin/users?${params.toString()}`);
       setUsers(response.data.users);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error) {
       console.error('获取用户列表失败:', error);
       toast.error('获取用户列表失败');
@@ -2215,15 +2686,66 @@ function UserManagement() {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 删除用户
+  const handleDeleteUser = (userId, username) => {
+    setDeleteUserId(userId);
+    setDeleteUserName(username);
+    setIsDeleteModalOpen(true);
+  };
+
+  // 确认删除用户
+  const confirmDeleteUser = async () => {
+    if (!deleteUserId) return;
+
+    try {
+      await api.delete(`/admin/users/${deleteUserId}`);
+      toast.success('用户删除成功');
+      setIsDeleteModalOpen(false);
+      setDeleteUserId(null);
+      setDeleteUserName('');
+      fetchUsers();
+    } catch (error) {
+      console.error('删除用户失败:', error);
+      toast.error('删除用户失败');
+    }
+  };
+
+  // 激活/停用用户
+  const handleToggleStatus = (userId, username, currentStatus) => {
+    const newStatus = currentStatus === 'inactive' ? 'active' : 'inactive';
+    setStatusUserId(userId);
+    setStatusUserName(username);
+    setTargetStatus(newStatus);
+    setIsStatusModalOpen(true);
+  };
+
+  // 确认激活/停用用户
+  const confirmToggleStatus = async () => {
+    if (!statusUserId || !targetStatus) return;
+
+    try {
+      await api.put(`/admin/users/${statusUserId}/status`, { status: targetStatus });
+      toast.success(`用户已${targetStatus === 'active' ? '激活' : '停用'}`);
+      setIsStatusModalOpen(false);
+      setStatusUserId(null);
+      setStatusUserName('');
+      setTargetStatus('');
+      fetchUsers();
+    } catch (error) {
+      console.error('更新用户状态失败:', error);
+      toast.error('更新用户状态失败');
+    }
+  };
+
+
+
 
   const getStatusBadge = (user) => {
     if (user.status === 'banned') {
       return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">已封禁</span>;
+    }
+    if (user.status === 'inactive') {
+      return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">未激活</span>;
     }
     if (user.is_muted) {
       return <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">已禁言</span>;
@@ -2243,135 +2765,320 @@ function UserManagement() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <h2 className="text-2xl font-bold text-gray-900">用户管理</h2>
-        <div className="flex items-center space-x-4">
-          <input
-            type="text"
-            placeholder="搜索用户..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple w-64"
-          />
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-6 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+          <div>
+            <input
+              type="text"
+              placeholder="搜索用户..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            />
+          </div>
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="">所有状态</option>
+              <option value="active">正常</option>
+              <option value="banned">已封禁</option>
+            </select>
+          </div>
+          <div>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="">所有角色</option>
+              <option value="user">普通用户</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
+          <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="created_at">按注册时间</option>
+              <option value="last_login">按最后登录时间</option>
+            </select>
+          </div>
+          <div>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            >
+              <option value="DESC">降序</option>
+              <option value="ASC">升序</option>
+            </select>
+          </div>
+          <div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setRoleFilter('');
+                setSortBy('created_at');
+                setSortOrder('DESC');
+                setLastLoginFrom('');
+                setLastLoginTo('');
+                setCurrentPage(1);
+              }}
+              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              重置筛选
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div>
+            <input
+              type="date"
+              placeholder="最后登录开始时间"
+              value={lastLoginFrom}
+              onChange={(e) => setLastLoginFrom(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            />
+          </div>
+          <div>
+            <input
+              type="date"
+              placeholder="最后登录结束时间"
+              value={lastLoginTo}
+              onChange={(e) => setLastLoginTo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">用户信息</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">UID</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">角色</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">状态</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">注册时间</th>
-              <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-3">
-                    <img
-                      src={user.avatar && user.avatar.length > 0 ? user.avatar : 'https://via.placeholder.com/150'}
-                      alt={user.nickname || user.username}
-                      className="w-10 h-10 rounded-full object-cover"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/150';
-                      }}
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900">{user.nickname || user.username}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm font-mono text-gray-600">{user.uid}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    {user.role === 'admin' ? '管理员' : '用户'}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  {getStatusBadge(user)}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-sm text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
-                    {/* 编辑 */}
-                    <button
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="编辑"
-                    >
-                      <FiEdit2 size={18} />
-                    </button>
-
-                    {/* 封禁/解封 */}
-                    <button
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsBanModalOpen(true);
-                      }}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.status === 'banned' 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-red-600 hover:bg-red-50'
-                      }`}
-                      title={user.status === 'banned' ? '解封' : '封禁'}
-                    >
-                      {user.status === 'banned' ? <FiUnlock size={18} /> : <FiLock size={18} />}
-                    </button>
-
-                    {/* 禁言/解除禁言 */}
-                    <button
-                      onClick={() => handleMuteUser(user.id, !user.is_muted)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.is_muted 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-orange-600 hover:bg-orange-50'
-                      }`}
-                      title={user.is_muted ? '解除禁言' : '禁言'}
-                    >
-                      {user.is_muted ? <FiVolume2 size={18} /> : <FiVolumeX size={18} />}
-                    </button>
-
-                    {/* 禁止/允许发布 */}
-                    <button
-                      onClick={() => handlePostBanUser(user.id, !user.is_post_banned)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        user.is_post_banned 
-                          ? 'text-green-600 hover:bg-green-50' 
-                          : 'text-yellow-600 hover:bg-yellow-50'
-                      }`}
-                      title={user.is_post_banned ? '允许发布' : '禁止发布'}
-                    >
-                      {user.is_post_banned ? <FiSend size={18} /> : <FiX size={18} />}
-                    </button>
-                  </div>
-                </td>
+      <div>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">用户信息</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">UID</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">角色</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">状态</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">注册时间</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">最后登录</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">注册IP</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            <FiUsers size={48} className="mx-auto mb-4" />
-            <p>没有找到用户</p>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={(user.avatar && user.avatar.length > 0 && user.avatar !== '/uploads/avatars/default.png') ? user.avatar : '/moren.png'}
+                        alt={user.nickname || user.username}
+                        className="w-8 h-8 rounded-full object-cover"
+                        onError={(e) => {
+                          if (!e.target.dataset.errorHandled) {
+                            e.target.dataset.errorHandled = 'true';
+                            e.target.src = '/moren.png';
+                          }
+                        }}
+                      />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{user.nickname || user.username}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs font-mono text-gray-600">{user.uid}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {user.role === 'admin' ? '管理员' : '用户'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStatusBadge(user)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {new Date(user.created_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {user.last_login ? new Date(user.last_login).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-xs text-gray-500">
+                      {user.register_ip || '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center space-x-1">
+                      {/* 编辑 */}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsEditModalOpen(true);
+                        }}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="编辑"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+
+                      {/* 激活/停用 */}
+                      <button
+                        onClick={() => handleToggleStatus(user.id, user.nickname || user.username, user.status)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.status === 'inactive' 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                        title={user.status === 'inactive' ? '激活用户' : '停用用户'}
+                      >
+                        {user.status === 'inactive' ? <FiCheck size={16} /> : <FiX size={16} />}
+                      </button>
+
+                      {/* 封禁/解封 */}
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setIsBanModalOpen(true);
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.status === 'banned' 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-red-600 hover:bg-red-50'
+                        }`}
+                        title={user.status === 'banned' ? '解封' : '封禁'}
+                      >
+                        {user.status === 'banned' ? <FiUnlock size={16} /> : <FiLock size={16} />}
+                      </button>
+
+                      {/* 禁言/解除禁言 */}
+                      <button
+                        onClick={() => handleMuteUser(user.id, !user.is_muted)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.is_muted 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-orange-600 hover:bg-orange-50'
+                        }`}
+                        title={user.is_muted ? '解除禁言' : '禁言'}
+                      >
+                        {user.is_muted ? <FiVolume2 size={16} /> : <FiVolumeX size={16} />}
+                      </button>
+
+                      {/* 禁止/允许发布 */}
+                      <button
+                        onClick={() => handlePostBanUser(user.id, !user.is_post_banned)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          user.is_post_banned 
+                            ? 'text-green-600 hover:bg-green-50' 
+                            : 'text-yellow-600 hover:bg-yellow-50'
+                        }`}
+                        title={user.is_post_banned ? '允许发布' : '禁止发布'}
+                      >
+                        {user.is_post_banned ? <FiSend size={16} /> : <FiX size={16} />}
+                      </button>
+
+                      {/* 删除用户 */}
+                      <button
+                        onClick={() => handleDeleteUser(user.id, user.nickname || user.username)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="删除用户"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+          
+          {!loading && users.length === 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <FiUsers size={32} className="mx-auto mb-2" />
+              <p className="text-sm">没有找到用户</p>
+            </div>
+          )}
+        </div>
+
+        {/* 分页 */}
+        {!loading && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4 flex items-center justify-center">
+            <nav className="flex items-center space-x-1">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
+              >
+                <FiChevronLeft size={14} className="mr-1" />
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-1.5 rounded-md border text-sm ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
+              >
+                下一页
+                <FiChevronRight size={14} className="ml-1" />
+              </button>
+            </nav>
           </div>
         )}
       </div>
@@ -2398,6 +3105,162 @@ function UserManagement() {
         }}
         onBan={handleBanUser}
       />
+
+      {/* 删除用户确认弹窗 */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">确认删除</h3>
+                  <p className="text-red-100 mt-1">永久删除用户账户</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteUserId(null);
+                    setDeleteUserName('');
+                  }} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <FiX size={28} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiTrash2 size={32} className="text-red-500" />
+                </div>
+                <p className="text-gray-700 text-lg">
+                  确定要删除用户 <span className="font-bold text-red-600">{deleteUserName}</span> 吗？
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  此操作不可恢复，将删除该用户的所有数据
+                </p>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteUserId(null);
+                    setDeleteUserName('');
+                  }}
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeleteUser}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-rose-700 transition-all flex items-center justify-center"
+                >
+                  <FiTrash2 size={18} className="mr-2" />
+                  确认删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 激活/停用用户确认弹窗 */}
+      {isStatusModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className={`bg-gradient-to-r px-8 py-5 ${
+              targetStatus === 'active' 
+                ? 'from-green-500 to-emerald-600' 
+                : 'from-yellow-500 to-orange-600'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">
+                    {targetStatus === 'active' ? '确认激活' : '确认停用'}
+                  </h3>
+                  <p className="text-white/90 mt-1">
+                    {targetStatus === 'active' ? '激活用户账户' : '停用用户账户'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setIsStatusModalOpen(false);
+                    setStatusUserId(null);
+                    setStatusUserName('');
+                    setTargetStatus('');
+                  }} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <FiX size={28} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  targetStatus === 'active' 
+                    ? 'bg-green-100' 
+                    : 'bg-yellow-100'
+                }`}>
+                  {targetStatus === 'active' ? (
+                    <FiCheck size={32} className="text-green-500" />
+                  ) : (
+                    <FiX size={32} className="text-yellow-500" />
+                  )}
+                </div>
+                <p className="text-gray-700 text-lg">
+                  确定要{targetStatus === 'active' ? '激活' : '停用'}用户 <span className={`font-bold ${
+                    targetStatus === 'active' 
+                      ? 'text-green-600' 
+                      : 'text-yellow-600'
+                  }`}>{statusUserName}</span> 吗？
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  {targetStatus === 'active' 
+                    ? '用户将可以正常登录和使用系统' 
+                    : '用户将无法登录和使用系统'
+                  }
+                </p>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsStatusModalOpen(false);
+                    setStatusUserId(null);
+                    setStatusUserName('');
+                    setTargetStatus('');
+                  }}
+                  className="flex-1 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmToggleStatus}
+                  className={`flex-1 px-6 py-3 text-white rounded-xl font-semibold transition-all flex items-center justify-center ${
+                    targetStatus === 'active' 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700' 
+                      : 'bg-gradient-to-r from-yellow-500 to-orange-600 hover:from-yellow-600 hover:to-orange-700'
+                  }`}
+                >
+                  {targetStatus === 'active' ? (
+                    <><FiCheck size={18} className="mr-2" />确认激活</>
+                  ) : (
+                    <><FiX size={18} className="mr-2" />确认停用</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2408,20 +3271,26 @@ function PostManagement() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchPosts();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage, searchTerm]);
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: 20
+      });
       if (searchTerm) params.append('search', searchTerm);
       if (statusFilter) params.append('status', statusFilter);
       
       const response = await api.get(`/admin/posts?${params.toString()}`);
-      setPosts(response.data.posts);
+      setPosts(response.data?.posts || []);
+      setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取文章列表失败:', error);
       toast.error('获取文章列表失败');
@@ -2438,6 +3307,17 @@ function PostManagement() {
     } catch (error) {
       console.error('更新文章状态失败:', error);
       toast.error('更新文章状态失败');
+    }
+  };
+
+  const handleTogglePin = async (postId) => {
+    try {
+      const response = await api.post(`/posts/${postId}/toggle-pin`);
+      toast.success(response.data.message);
+      fetchPosts();
+    } catch (error) {
+      console.error('置顶文章失败:', error);
+      toast.error(error.response?.data?.message || '置顶文章失败');
     }
   };
 
@@ -2476,17 +3356,17 @@ function PostManagement() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">文章管理</h2>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <input
             type="text"
             placeholder="搜索文章..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && fetchPosts()}
-            className="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple w-64"
+            className="flex-1 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
           />
           <select
             value={statusFilter}
@@ -2501,8 +3381,9 @@ function PostManagement() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-grow flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">文章信息</th>
@@ -2517,16 +3398,27 @@ function PostManagement() {
               <tr key={post.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-6 py-4">
                   <div>
-                    <p className="font-medium text-gray-900 mb-1">{post.title}</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      {post.is_pinned && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-medium">
+                          <FiStar size={12} className="fill-yellow-500" />
+                          置顶
+                        </span>
+                      )}
+                      <p className="font-medium text-gray-900">{post.title}</p>
+                    </div>
                     <p className="text-sm text-gray-500 line-clamp-1">{post.summary}</p>
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-2">
                     <img
-                      src={post.author?.avatar || '/uploads/avatars/default.png'}
+                      src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
                       alt={post.author?.nickname || post.author?.username}
                       className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.src = '/moren.png';
+                      }}
                     />
                     <span className="text-sm text-gray-600">{post.author?.nickname || post.author?.username}</span>
                   </div>
@@ -2540,7 +3432,17 @@ function PostManagement() {
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+                    <button
+                      onClick={() => handleTogglePin(post.id)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        post.is_pinned
+                          ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                      }`}
+                    >
+                      {post.is_pinned ? '取消置顶' : '置顶'}
+                    </button>
                     {post.status === 'pending' && (
                       <button
                         onClick={() => handleStatusChange(post.id, 'published')}
@@ -2571,11 +3473,58 @@ function PostManagement() {
             ))}
           </tbody>
         </table>
+        </div>
         
-        {posts.length === 0 && (
+        {!loading && posts.length === 0 && (
           <div className="text-center py-12 text-gray-400">
             <FiFileText size={48} className="mx-auto mb-4" />
             <p>没有找到文章</p>
+          </div>
+        )}
+
+        {/* 分页 */}
+        {!loading && (
+          <div className="px-6 py-6 border-t border-gray-100 flex items-center justify-center mt-auto">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                上一页
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-4 py-2 rounded-md border ${currentPage === pageNum
+                      ? 'bg-planet-purple text-white border-planet-purple'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                下一页
+              </button>
+            </nav>
           </div>
         )}
       </div>
@@ -2583,21 +3532,45 @@ function PostManagement() {
   );
 }
 
+// 路由保护组件
+function ProtectedRoute({ children, requiredRole = 'admin', requiredPermission }) {
+  const { user } = useAuthStore();
+  
+  // 检查权限
+  if (user?.role === 'sub_admin') {
+    // 如果需要特定权限，检查用户是否有该权限
+    if (requiredPermission && !user.permissions?.[requiredPermission]) {
+      return <Navigate to="/admin-caicai0304" />;
+    }
+  }
+  
+  return children;
+}
+
 export default function AdminDashboard() {
   return (
     <AdminLayout>
       <Routes>
-        <Route path="/" element={<DashboardHome />} />
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/posts" element={<PostManagement />} />
-        <Route path="/comments" element={<CommentManagement />} />
-        <Route path="/friend-links" element={<FriendLinkManagement />} />
-        <Route path="/banned-words" element={<BannedWords />} />
-        <Route path="/task-types" element={<TaskTypeManagement />} />
-        <Route path="/task-center" element={<TaskCenterManagement />} />
-        <Route path="/user-tasks" element={<UserTaskManagement />} />
-        <Route path="/error-management" element={<ErrorManagement />} />
-        <Route path="/site-configs" element={<SiteConfig />} />
+        <Route path="/" element={<ProtectedRoute requiredPermission="dashboard"><DashboardHome /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute requiredPermission="userManagement"><UserManagement /></ProtectedRoute>} />
+        <Route path="/authorization" element={<ProtectedRoute requiredPermission="authorization"><AuthorizationManagement /></ProtectedRoute>} />
+        <Route path="/posts" element={<ProtectedRoute requiredPermission="postManagement"><PostManagement /></ProtectedRoute>} />
+        <Route path="/comments" element={<ProtectedRoute requiredPermission="commentManagement"><CommentManagement /></ProtectedRoute>} />
+        <Route path="/friend-links" element={<ProtectedRoute requiredPermission="friendLinkManagement"><FriendLinkManagement /></ProtectedRoute>} />
+        <Route path="/banned-words" element={<ProtectedRoute requiredPermission="bannedWordManagement"><BannedWords /></ProtectedRoute>} />
+        <Route path="/task-types" element={<ProtectedRoute requiredPermission="taskTypeManagement"><TaskTypeManagement /></ProtectedRoute>} />
+        <Route path="/announcements" element={<ProtectedRoute requiredPermission="announcementManagement"><AnnouncementManagement /></ProtectedRoute>} />
+        <Route path="/task-center" element={<ProtectedRoute requiredPermission="taskCenter"><TaskCenterManagement /></ProtectedRoute>} />
+        <Route path="/user-tasks" element={<ProtectedRoute requiredPermission="userTaskManagement"><UserTaskManagement /></ProtectedRoute>} />
+
+        <Route path="/site-configs" element={<ProtectedRoute requiredPermission="siteConfig"><SiteConfig /></ProtectedRoute>} />
+        <Route path="/advertisements" element={<ProtectedRoute requiredPermission="siteConfig"><AdvertisementManagement /></ProtectedRoute>} />
+        <Route path="/check-ins" element={<ProtectedRoute requiredPermission="checkInManagement"><CheckInManagement /></ProtectedRoute>} />
+        <Route path="/moon-centers" element={<ProtectedRoute requiredPermission="moonCenterManagement"><MoonCenterManagement /></ProtectedRoute>} />
+        <Route path="/moon-point-requests" element={<ProtectedRoute requiredPermission="moonPointRequestManagement"><MoonPointRequestManagement /></ProtectedRoute>} />
+        <Route path="/moon-point-rules" element={<ProtectedRoute requiredPermission="moonPointRuleManagement"><MoonPointRuleManagement /></ProtectedRoute>} />
+        <Route path="/exp-management" element={<ProtectedRoute requiredPermission="expManagement"><ExpManagement /></ProtectedRoute>} />
+        <Route path="/error-logs" element={<ProtectedRoute requiredPermission="errorLogManagement"><ErrorLogManagement /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );

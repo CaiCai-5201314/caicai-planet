@@ -39,7 +39,9 @@ export default function TaskCenterManagement() {
     title: '',
     description: '',
     gender: 'male',
-    difficulty: 'medium'
+    difficulty: 'medium',
+    suggestedTime: '',
+    items: ''
   });
   
   // 表单状态
@@ -52,11 +54,10 @@ export default function TaskCenterManagement() {
     difficulty: 'medium',
     priority: 'medium',
     reward: 0,
-    startTime: '',
     endTime: '',
-    maxParticipants: '',
     status: 'draft',
-    assignedTo: ''
+    suggestedTime: '',
+    items: ''
   });
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function TaskCenterManagement() {
       fetchStats();
       fetchCustomTypes();
     }
-  }, [activeTab, currentPage, statusFilter, showProposalsTab]);
+  }, [activeTab, currentPage, statusFilter, searchTerm, showProposalsTab]);
 
   useEffect(() => {
     if (showProposalsTab) {
@@ -85,6 +86,14 @@ export default function TaskCenterManagement() {
   const fetchTasks = async () => {
     try {
       setLoading(true);
+      // 检查token是否存在
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('没有找到token，需要重新登录');
+        toast.error('请重新登录');
+        return;
+      }
+      
       const response = await api.get('/admin/tasks', {
         params: {
           gender: activeTab,
@@ -98,7 +107,10 @@ export default function TaskCenterManagement() {
       setTotalPages(response.data.pagination?.totalPages || 1);
     } catch (error) {
       console.error('获取任务列表失败:', error);
-      toast.error('获取任务列表失败');
+      console.error('错误响应:', error.response);
+      console.error('错误消息:', error.message);
+      const errorMessage = error.response?.data?.message || '获取任务列表失败';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -163,10 +175,26 @@ export default function TaskCenterManagement() {
   };
 
   // 审核通过提议
-  const handleApproveProposal = async (proposalId) => {
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approvingProposal, setApprovingProposal] = useState(null);
+  const [approveForm, setApproveForm] = useState({ difficulty: 'medium' });
+
+  const handleOpenApproveModal = (proposal) => {
+    setApprovingProposal(proposal);
+    setApproveForm({ difficulty: proposal.difficulty });
+    setShowApproveModal(true);
+  };
+
+  const handleApproveProposal = async () => {
+    if (!approvingProposal) return;
+    
     try {
-      await api.put(`/admin/task-proposals/${proposalId}/approve`);
+      await api.put(`/admin/task-proposals/${approvingProposal.id}/approve`, {
+        difficulty: approveForm.difficulty
+      });
       toast.success('已批准该任务提议');
+      setShowApproveModal(false);
+      setApprovingProposal(null);
       fetchProposals();
       fetchProposalStats();
     } catch (error) {
@@ -189,6 +217,20 @@ export default function TaskCenterManagement() {
     }
   };
 
+  // 删除提议
+  const handleDeleteProposal = async (proposalId) => {
+    if (!window.confirm('确定要删除这个任务提议吗？')) return;
+    try {
+      await api.delete(`/admin/task-proposals/${proposalId}`);
+      toast.success('任务提议已删除');
+      fetchProposals();
+      fetchProposalStats();
+    } catch (error) {
+      console.error('删除提议失败:', error);
+      toast.error('删除失败');
+    }
+  };
+
   // 打开编辑提议弹窗
   const handleOpenEditProposal = (proposal) => {
     setEditingProposal(proposal);
@@ -196,7 +238,9 @@ export default function TaskCenterManagement() {
       title: proposal.title,
       description: proposal.description,
       gender: proposal.gender,
-      difficulty: proposal.difficulty
+      difficulty: proposal.difficulty,
+      suggestedTime: proposal.suggestedTime || '',
+      items: proposal.items || ''
     });
     setShowEditProposalModal(true);
   };
@@ -242,9 +286,7 @@ export default function TaskCenterManagement() {
         gender: activeTab,
         difficulty: formData.difficulty,
         reward: formData.reward,
-        startTime: formData.startTime || null,
         endTime: formData.endTime || null,
-        maxParticipants: formData.maxParticipants || null,
         status: formData.status
       };
       
@@ -280,9 +322,7 @@ export default function TaskCenterManagement() {
         gender: formData.gender,
         difficulty: formData.difficulty,
         reward: formData.reward,
-        startTime: formData.startTime || null,
         endTime: formData.endTime || null,
-        maxParticipants: formData.maxParticipants || null,
         status: formData.status
       };
       
@@ -335,11 +375,10 @@ export default function TaskCenterManagement() {
       difficulty: 'medium',
       priority: 'medium',
       reward: 0,
-      startTime: '',
       endTime: '',
-      maxParticipants: '',
       status: 'draft',
-      assignedTo: ''
+      suggestedTime: '',
+      items: ''
     });
     setCustomTopics([]);
   };
@@ -355,11 +394,10 @@ export default function TaskCenterManagement() {
       difficulty: task.difficulty,
       priority: task.priority || 'medium',
       reward: task.reward,
-      startTime: task.startTime ? new Date(task.startTime).toISOString().slice(0, 16) : '',
       endTime: task.endTime ? new Date(task.endTime).toISOString().slice(0, 16) : '',
-      maxParticipants: task.maxParticipants || '',
       status: task.status,
-      assignedTo: task.assignedTo || ''
+      suggestedTime: task.suggestedTime || '',
+      items: task.items || ''
     });
     // 如果有自定义类型，加载对应的话题
     if (task.customTypeId) {
@@ -381,51 +419,106 @@ export default function TaskCenterManagement() {
     const genderStats = activeTab === 'male' ? stats.gender.male : stats.gender.female;
     
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">总任务数</p>
-              <p className="text-2xl font-bold text-gray-900">{genderStats}</p>
+              <p className="text-sm text-gray-500 font-medium">总任务数</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{genderStats}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-planet-purple/10 flex items-center justify-center">
-              <FiLayers className="text-planet-purple" size={20} />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center shadow-lg shadow-planet-purple/20">
+              <FiLayers className="text-white" size={24} />
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">已发布</p>
-              <p className="text-2xl font-bold text-green-600">{stats.status.published}</p>
+              <p className="text-sm text-gray-500 font-medium">已发布</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{stats.status.published}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <FiCheckCircle className="text-green-600" size={20} />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+              <FiCheckCircle className="text-white" size={24} />
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">待发布</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.status.draft}</p>
+              <p className="text-sm text-gray-500 font-medium">待发布</p>
+              <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.status.draft}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-              <FiClock className="text-yellow-600" size={20} />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+              <FiClock className="text-white" size={24} />
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">已过期</p>
-              <p className="text-2xl font-bold text-gray-600">{stats.status.expired}</p>
+              <p className="text-sm text-gray-500 font-medium">已过期</p>
+              <p className="text-2xl font-bold text-gray-600 mt-1">{stats.status.expired}</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-              <FiAlertCircle className="text-gray-600" size={20} />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center shadow-lg shadow-gray-500/20">
+              <FiAlertCircle className="text-white" size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // 渲染用户提议统计卡片
+  const renderProposalStatsCards = () => {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">总提议数</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{proposalStats.pending + proposalStats.approved + proposalStats.rejected}</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center shadow-lg shadow-planet-purple/20">
+              <FiInbox className="text-white" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">待审核</p>
+              <p className="text-2xl font-bold text-yellow-600 mt-1">{proposalStats.pending}</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+              <FiClock className="text-white" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">已通过</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{proposalStats.approved}</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg shadow-green-500/20">
+              <FiCheckCircle className="text-white" size={24} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 font-medium">已拒绝</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">{proposalStats.rejected}</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
+              <FiXCircle className="text-white" size={24} />
             </div>
           </div>
         </div>
@@ -473,22 +566,17 @@ export default function TaskCenterManagement() {
     return (
       <div 
         key={task.id}
-        className="task-row group bg-white rounded-xl border border-gray-100 p-5 hover:shadow-lg hover:border-planet-purple/20 transition-all duration-200 mb-4"
-        style={{
-          marginLeft: '10%',
-          marginRight: '10%',
-          width: '80%'
-        }}
+        className="task-row group bg-white rounded-xl border border-gray-100 p-6 hover:shadow-lg hover:border-planet-purple/20 transition-all duration-300 transform hover:-translate-y-1 mb-4"
       >
         {/* 第一行：标题和状态标签 */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+          <div className="flex items-center space-x-4 flex-1 min-w-0">
             {/* 任务类型图标 */}
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center flex-shrink-0 shadow-lg shadow-planet-purple/20">
               {hasCustomType ? (
-                <span className="text-lg">{task.customType.icon || '📋'}</span>
+                <span className="text-xl">{task.customType.icon || '📋'}</span>
               ) : (
-                <FiLayers className="text-white" size={20} />
+                <FiLayers className="text-white" size={24} />
               )}
             </div>
             
@@ -497,12 +585,12 @@ export default function TaskCenterManagement() {
           </div>
           
           {/* 状态标签组 */}
-          <div className="flex items-center space-x-2 flex-shrink-0">
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-gray-100 text-gray-700'} flex items-center space-x-1`}>
-              <StatusIcon size={12} />
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <span className={`px-4 py-1.5 rounded-full text-xs font-medium ${statusInfo?.color || 'bg-gray-100 text-gray-700'} flex items-center space-x-2`}>
+              <StatusIcon size={14} />
               <span>{statusInfo?.label || '未知'}</span>
             </span>
-            <span className={`px-2 py-1 rounded text-xs font-medium border ${
+            <span className={`px-3 py-1.5 rounded-full text-xs font-medium border ${
               taskDifficulty === 'easy' ? 'border-green-200 text-green-600 bg-green-50' :
               taskDifficulty === 'medium' ? 'border-yellow-200 text-yellow-600 bg-yellow-50' :
               'border-red-200 text-red-600 bg-red-50'
@@ -513,28 +601,22 @@ export default function TaskCenterManagement() {
         </div>
         
         {/* 第二行：类型标签和描述 */}
-        <div className="mb-3">
+        <div className="mb-4">
           {/* 自定义类型和话题标签 */}
-          <div className="flex items-center flex-wrap gap-2 mb-2">
-            {hasCustomType && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
-                <FiLayers size={12} className="mr-1.5" />
-                {task.customType.name}
-              </span>
-            )}
-            {hasCustomTopic && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700">
-                <FiMessageSquare size={12} className="mr-1.5" />
-                {task.customTopic.name}
-              </span>
-            )}
-            {task?.assignedTo && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-teal-100 text-teal-700">
-                <FiUsers size={12} className="mr-1.5" />
-                {task.assignedTo}
-              </span>
-            )}
-          </div>
+            <div className="flex items-center flex-wrap gap-3 mb-3">
+              {hasCustomType && (
+                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                  <FiLayers size={14} className="mr-2" />
+                  {task.customType.name}
+                </span>
+              )}
+              {hasCustomTopic && (
+                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  <FiMessageSquare size={14} className="mr-2" />
+                  {task.customTopic.name}
+                </span>
+              )}
+            </div>
           
           {/* 描述 */}
           <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
@@ -543,35 +625,28 @@ export default function TaskCenterManagement() {
         </div>
         
         {/* 第三行：元信息和操作按钮 */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-4 border-t border-gray-100 gap-4">
           {/* 左侧：时间、参与人数、奖励 */}
-          <div className="flex items-center flex-wrap gap-4 text-xs text-gray-500">
-            <span className="flex items-center space-x-1.5">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+            <span className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
               <FiCalendar size={14} className="text-gray-400" />
               <span>创建: {task?.createdAt ? new Date(task.createdAt).toLocaleDateString() : '未知'}</span>
             </span>
             
-            {task?.startTime && (
-              <span className="flex items-center space-x-1.5">
-                <FiClock size={14} className="text-gray-400" />
-                <span>生效: {new Date(task.startTime).toLocaleDateString()}</span>
-              </span>
-            )}
-            
             {task?.endTime && (
-              <span className="flex items-center space-x-1.5">
+              <span className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
                 <FiAlertCircle size={14} className="text-gray-400" />
                 <span>过期: {new Date(task.endTime).toLocaleDateString()}</span>
               </span>
             )}
             
-            <span className="flex items-center space-x-1.5">
+            <span className="flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
               <FiUsers size={14} className="text-gray-400" />
-              <span>参与: {task?.currentParticipants || 0}{task?.maxParticipants ? `/${task.maxParticipants}` : ''}</span>
+              <span>参与: {task?.currentParticipants || 0}</span>
             </span>
             
             {task?.reward > 0 && (
-              <span className="flex items-center space-x-1 text-planet-purple font-medium">
+              <span className="flex items-center space-x-2 bg-gradient-to-r from-planet-purple to-planet-pink px-3 py-1.5 rounded-lg text-white font-medium">
                 <span>🎁</span>
                 <span>奖励: {task.reward} 积分</span>
               </span>
@@ -584,25 +659,28 @@ export default function TaskCenterManagement() {
             {task?.status === 'draft' && task?.id && (
               <button
                 onClick={() => handleStatusChange(task.id, 'published')}
-                className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors shadow-sm"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg"
               >
-                发布
+                <FiCheckCircle size={16} />
+                <span>发布</span>
               </button>
             )}
             {task?.status === 'published' && task?.id && (
               <button
                 onClick={() => handleStatusChange(task.id, 'disabled')}
-                className="px-3 py-1.5 bg-gray-500 text-white rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors shadow-sm"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg text-sm font-medium hover:from-gray-600 hover:to-gray-700 transition-all duration-300 shadow-md hover:shadow-lg"
               >
-                禁用
+                <FiEyeOff size={16} />
+                <span>禁用</span>
               </button>
             )}
             {(task?.status === 'disabled' || task?.status === 'expired') && task?.id && (
               <button
                 onClick={() => handleStatusChange(task.id, 'published')}
-                className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors shadow-sm"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg"
               >
-                启用
+                <FiEye size={16} />
+                <span>启用</span>
               </button>
             )}
             
@@ -610,10 +688,10 @@ export default function TaskCenterManagement() {
             {task?.id && (
               <button
                 onClick={() => openEditModal(task)}
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                title="编辑"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
               >
-                <FiEdit2 size={18} />
+                <FiEdit2 size={16} />
+                <span>编辑</span>
               </button>
             )}
             
@@ -621,10 +699,10 @@ export default function TaskCenterManagement() {
             {task?.id && (
               <button
                 onClick={() => handleDeleteTask(task.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="删除"
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-md hover:shadow-lg"
               >
-                <FiTrash2 size={18} />
+                <FiTrash2 size={16} />
+                <span>删除</span>
               </button>
             )}
           </div>
@@ -729,52 +807,27 @@ export default function TaskCenterManagement() {
           </div>
         </div>
         
-        {/* 奖励和人数限制 */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分</label>
-            <input
-              type="number"
-              value={formData.reward}
-              onChange={(e) => setFormData({ ...formData, reward: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">最大参与人数</label>
-            <input
-              type="number"
-              value={formData.maxParticipants}
-              onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })}
-              placeholder="不限"
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-            />
-          </div>
-        </div>
-        
-        {/* 任务负责人 */}
+        {/* 奖励积分 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">任务负责人</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分</label>
           <input
-            type="text"
-            value={formData.assignedTo}
-            onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-            placeholder="输入负责人名称（可选）"
+            type="number"
+            value={formData.reward}
+            onChange={(e) => setFormData({ ...formData, reward: parseInt(e.target.value) || 0 })}
+            placeholder="0"
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
           />
         </div>
         
-        {/* 生效时间和过期时间 */}
+        {/* 提议用户和过期时间 */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">生效时间</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">提议用户</label>
             <input
-              type="datetime-local"
-              value={formData.startTime}
-              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+              type="text"
+              value={currentTask?.proposalUser?.username || currentTask?.creator?.username || '未知用户'}
+              disabled
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple bg-gray-50"
             />
           </div>
           
@@ -802,28 +855,50 @@ export default function TaskCenterManagement() {
             <option value="disabled">已禁用</option>
           </select>
         </div>
+
+        {/* 建议游玩时间 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">建议游玩时间（可选）</label>
+          <input
+            type="text"
+            value={formData.suggestedTime}
+            onChange={(e) => setFormData({ ...formData, suggestedTime: e.target.value })}
+            placeholder="例如：30分钟、1小时"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+          />
+        </div>
+
+        {/* 任务道具 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">任务道具（可选，多个道具用逗号分隔）</label>
+          <input
+            type="text"
+            value={formData.items}
+            onChange={(e) => setFormData({ ...formData, items: e.target.value })}
+            placeholder="例如：手机、笔记本、相机"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+          />
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="p-6">
+    <div className="flex flex-col">
       {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">任务中心管理</h1>
-        {!showProposalsTab && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center space-x-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
-          >
-            <FiPlus size={20} />
-            <span>创建任务</span>
-          </button>
-        )}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">任务中心管理</h1>
+        <button
+          onClick={openAddModal}
+          className="flex items-center space-x-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors z-10"
+        >
+          <FiPlus size={20} />
+          <span>创建任务</span>
+        </button>
       </div>
 
       {/* 统计卡片 */}
-      {!showProposalsTab && renderStatsCards()}
+      {!showProposalsTab ? renderStatsCards() : renderProposalStatsCards()}
 
       {/* 专区切换标签 */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-1 inline-flex mb-6">
@@ -934,75 +1009,112 @@ export default function TaskCenterManagement() {
               <p className="text-gray-400 text-sm mt-1">用户提交的任务提议将显示在这里</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {proposals.map((proposal) => (
                 <div 
                   key={proposal.id}
-                  className="bg-white rounded-xl border border-gray-100 p-6 hover:shadow-md transition-shadow"
+                  className="bg-white rounded-2xl border border-gray-100 p-6 shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 hover:border-planet-purple/30"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">{proposal.title}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          proposal.status === 'approved' ? 'bg-green-100 text-green-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {proposal.status === 'pending' ? '待审核' :
-                           proposal.status === 'approved' ? '已通过' : '已拒绝'}
-                        </span>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          proposal.gender === 'male' ? 'bg-blue-50 text-blue-700' :
-                          proposal.gender === 'female' ? 'bg-pink-50 text-pink-700' :
-                          'bg-purple-50 text-purple-700'
-                        }`}>
-                          {proposal.gender === 'male' ? '男生专区' :
-                           proposal.gender === 'female' ? '女生专区' : '通用'}
-                        </span>
-                        <span className={`text-xs font-medium ${
-                          proposal.difficulty === 'easy' ? 'text-green-600' :
-                          proposal.difficulty === 'medium' ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {proposal.difficulty === 'easy' ? '简单' :
-                           proposal.difficulty === 'medium' ? '中等' : '困难'}
-                        </span>
+                  {/* 顶部：标题和状态 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      {/* 任务图标 */}
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-planet-purple to-planet-pink flex items-center justify-center flex-shrink-0 shadow-lg shadow-planet-purple/20">
+                        <FiInbox className="text-white" size={20} />
                       </div>
                       
-                      <p className="text-gray-600 mb-3">{proposal.description}</p>
-                      
-                      <div className="flex items-center space-x-4 text-sm text-gray-400">
-                        <span className="flex items-center space-x-1">
-                          <FiUser size={14} />
-                          <span>提议人: {proposal.user?.username || '未知用户'}</span>
-                        </span>
-                        <span>提交时间: {new Date(proposal.createdAt).toLocaleString()}</span>
-                      </div>
+                      {/* 任务标题 */}
+                      <h3 className="font-bold text-gray-900 text-lg truncate">{proposal.title}</h3>
                     </div>
                     
-                    <div className="flex items-center space-x-2 ml-4">
+                    {/* 状态标签 */}
+                    <span className={`px-4 py-1.5 rounded-full text-xs font-medium flex items-center space-x-2 ${
+                      proposal.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      proposal.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {proposal.status === 'pending' && <FiClock size={14} />}
+                      {proposal.status === 'approved' && <FiCheckCircle size={14} />}
+                      {proposal.status === 'rejected' && <FiXCircle size={14} />}
+                      <span>{proposal.status === 'pending' ? '待审核' :
+                       proposal.status === 'approved' ? '已通过' : '已拒绝'}</span>
+                    </span>
+                  </div>
+                  
+                  {/* 中间：类型标签和描述 */}
+                  <div className="mb-5">
+                    {/* 类型和难度标签 */}
+                    <div className="flex items-center flex-wrap gap-2 mb-4">
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${
+                        proposal.gender === 'male' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                        proposal.gender === 'female' ? 'bg-pink-50 text-pink-700 border border-pink-100' :
+                        'bg-purple-50 text-purple-700 border border-purple-100'
+                      }`}>
+                        {proposal.gender === 'male' ? '男生专区' :
+                         proposal.gender === 'female' ? '女生专区' : '通用'}
+                      </span>
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium ${
+                        proposal.difficulty === 'easy' ? 'bg-green-50 text-green-700 border border-green-100' :
+                        proposal.difficulty === 'medium' ? 'bg-yellow-50 text-yellow-700 border border-yellow-100' :
+                        'bg-red-50 text-red-700 border border-red-100'
+                      }`}>
+                        {proposal.difficulty === 'easy' ? '简单' :
+                         proposal.difficulty === 'medium' ? '中等' : '困难'}
+                      </span>
+                    </div>
+                    
+                    {/* 描述 */}
+                    <p className="text-gray-600 leading-relaxed mb-0">{proposal.description}</p>
+                  </div>
+                  
+                  {/* 底部：用户信息和操作按钮 */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-5 border-t border-gray-100 gap-4">
+                    {/* 左侧：用户信息 */}
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <span className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-lg">
+                        <FiUser size={14} className="text-gray-400" />
+                        <span className="text-gray-500">提议人: <span className="font-medium text-gray-700">{proposal.user?.username || '未知用户'}</span></span>
+                      </span>
+                      <span className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-lg">
+                        <FiMessageSquare size={14} className="text-gray-400" />
+                        <span className="text-gray-500">邮箱: <span className="font-medium text-gray-700">{proposal.user?.email || '未知邮箱'}</span></span>
+                      </span>
+                      <span className="flex items-center space-x-2 bg-gray-50 px-4 py-2 rounded-lg">
+                        <FiCalendar size={14} className="text-gray-400" />
+                        <span className="text-gray-500">提交: {new Date(proposal.createdAt).toLocaleString()}</span>
+                      </span>
+                    </div>
+                    
+                    {/* 右侧：操作按钮 */}
+                    <div className="flex flex-wrap items-center gap-3">
                       <button
                         onClick={() => handleOpenEditProposal(proposal)}
-                        className="flex items-center space-x-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
                       >
-                        <FiEdit2 size={18} />
+                        <FiEdit2 size={16} />
                         <span>编辑</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProposal(proposal.id)}
+                        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                      >
+                        <FiTrash2 size={16} />
+                        <span>删除</span>
                       </button>
                       {proposal.status === 'pending' && (
                         <>
                           <button
-                            onClick={() => handleApproveProposal(proposal.id)}
-                            className="flex items-center space-x-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                            onClick={() => handleOpenApproveModal(proposal)}
+                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg"
                           >
-                            <FiCheckCircle size={18} />
+                            <FiCheckCircle size={16} />
                             <span>通过</span>
                           </button>
                           <button
                             onClick={() => handleRejectProposal(proposal.id)}
-                            className="flex items-center space-x-1 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-orange-700 transition-all duration-300 shadow-md hover:shadow-lg"
                           >
-                            <FiXCircle size={18} />
+                            <FiXCircle size={16} />
                             <span>拒绝</span>
                           </button>
                         </>
@@ -1028,25 +1140,24 @@ export default function TaskCenterManagement() {
               <p className="text-gray-400 text-sm mt-1">点击右上角按钮创建新任务</p>
             </div>
           ) : (
-            <>
+            <div className="flex-grow flex flex-col">
               {/* 任务列表 - 居中70%宽度 */}
               <div className="space-y-0">
                 {tasks.map((task, index) => renderTaskRow(task, index))}
               </div>
               
               {/* 分页 */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center mt-8">
+              {!loading && (
+                <div className="flex items-center justify-center mt-8 mt-auto py-6 border-t border-gray-100">
                   <nav className="flex items-center space-x-2">
                     <button
                       onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      className="px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 shadow-sm hover:shadow"
                     >
-                      <FiChevronLeft size={16} />
+                      <FiChevronLeft size={16} className="mr-1" />
                       <span>上一页</span>
                     </button>
-                    
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
                       if (totalPages <= 5) {
@@ -1062,32 +1173,99 @@ export default function TaskCenterManagement() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-4 py-2 rounded-lg border transition-colors ${
-                            currentPage === pageNum
-                              ? 'bg-planet-purple text-white border-planet-purple'
-                              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                          }`}
+                          className={`px-4 py-2.5 rounded-lg border font-medium transition-all duration-300 shadow-sm hover:shadow ${currentPage === pageNum
+                            ? 'bg-gradient-to-r from-planet-purple to-planet-pink text-white border-planet-purple'
+                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            }`}
                         >
                           {pageNum}
                         </button>
                       );
                     })}
-                    
                     <button
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      className="px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center transition-all duration-300 shadow-sm hover:shadow"
                     >
                       <span>下一页</span>
-                      <FiChevronRight size={16} />
+                      <FiChevronRight size={16} className="ml-1" />
                     </button>
                   </nav>
                 </div>
               )}
-            </>
+            </div>
           )
         )}
       </div>
+
+      {/* 审核任务提议模态框 */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">审核任务提议</h3>
+              <button
+                onClick={() => setShowApproveModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FiXCircle size={24} />
+              </button>
+            </div>
+            
+            {approvingProposal && (
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">任务名称</label>
+                  <input
+                    type="text"
+                    value={approvingProposal.title}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple bg-gray-50"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">用户提交的难度</label>
+                  <input
+                    type="text"
+                    value={approvingProposal.difficulty === 'easy' ? '简单' : approvingProposal.difficulty === 'medium' ? '中等' : '困难'}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple bg-gray-50"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">后台实际难度</label>
+                  <select
+                    value={approveForm.difficulty}
+                    onChange={(e) => setApproveForm({ ...approveForm, difficulty: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  >
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                  </select>
+                </div>
+                
+                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowApproveModal(false)}
+                    className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleApproveProposal}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700"
+                  >
+                    确认通过
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 添加任务模态框 */}
       {showAddModal && (
@@ -1239,6 +1417,30 @@ export default function TaskCenterManagement() {
                     <option value="hard">困难</option>
                   </select>
                 </div>
+              </div>
+
+              {/* 建议游玩时间 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">建议游玩时间（可选）</label>
+                <input
+                  type="text"
+                  value={editProposalForm.suggestedTime}
+                  onChange={(e) => setEditProposalForm({ ...editProposalForm, suggestedTime: e.target.value })}
+                  placeholder="例如：30分钟、1小时"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                />
+              </div>
+
+              {/* 任务道具 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">任务道具（可选，多个道具用逗号分隔）</label>
+                <input
+                  type="text"
+                  value={editProposalForm.items}
+                  onChange={(e) => setEditProposalForm({ ...editProposalForm, items: e.target.value })}
+                  placeholder="例如：手机、笔记本、相机"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                />
               </div>
             </div>
             

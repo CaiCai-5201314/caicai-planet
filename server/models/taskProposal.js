@@ -52,6 +52,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
       comment: '审核时间'
+    },
+    suggestedTime: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: '建议游玩时间'
+    },
+    items: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: '任务道具（JSON格式存储）'
     }
   }, {
     tableName: 'task_proposals',

@@ -19,7 +19,17 @@ function SiteConfig() {
       { name: '微博', url: 'https://weibo.com', icon: 'weibo' },
       { name: '微信', url: '#', icon: 'wechat' }
     ],
-    footerContact: '如有任何问题或建议，欢迎联系我们'
+    footerContact: '如有任何问题或建议，欢迎联系我们',
+    footerBackgroundColor: '#1f2937',
+    footerTextColor: '#ffffff',
+    footerPaddingTop: '3rem',
+    footerPaddingBottom: '3rem',
+    footerShowLogo: 'true',
+    footerShowNavigation: 'true',
+    footerShowSocial: 'true',
+    footerShowContact: 'true',
+    footerShowCopyright: 'true',
+    footerLayout: 'grid'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,7 +57,17 @@ function SiteConfig() {
           footerSocial: response.data.configs.footerSocial 
             ? JSON.parse(response.data.configs.footerSocial) 
             : configs.footerSocial,
-          footerContact: response.data.configs.footerContact || configs.footerContact
+          footerContact: response.data.configs.footerContact || configs.footerContact,
+          footerBackgroundColor: response.data.configs.footerBackgroundColor || configs.footerBackgroundColor,
+          footerTextColor: response.data.configs.footerTextColor || configs.footerTextColor,
+          footerPaddingTop: response.data.configs.footerPaddingTop || configs.footerPaddingTop,
+          footerPaddingBottom: response.data.configs.footerPaddingBottom || configs.footerPaddingBottom,
+          footerShowLogo: response.data.configs.footerShowLogo || configs.footerShowLogo,
+          footerShowNavigation: response.data.configs.footerShowNavigation || configs.footerShowNavigation,
+          footerShowSocial: response.data.configs.footerShowSocial || configs.footerShowSocial,
+          footerShowContact: response.data.configs.footerShowContact || configs.footerShowContact,
+          footerShowCopyright: response.data.configs.footerShowCopyright || configs.footerShowCopyright,
+          footerLayout: response.data.configs.footerLayout || configs.footerLayout
         };
         setConfigs(loadedConfigs);
       }
@@ -69,7 +89,17 @@ function SiteConfig() {
         { key: 'footerAbout', value: configs.footerAbout, description: '页尾关于信息' },
         { key: 'footerLinks', value: JSON.stringify(configs.footerLinks), description: '页尾导航链接' },
         { key: 'footerSocial', value: JSON.stringify(configs.footerSocial), description: '页尾社交链接' },
-        { key: 'footerContact', value: configs.footerContact, description: '页尾联系我们信息' }
+        { key: 'footerContact', value: configs.footerContact, description: '页尾联系我们信息' },
+        { key: 'footerBackgroundColor', value: configs.footerBackgroundColor, description: '页尾背景色' },
+        { key: 'footerTextColor', value: configs.footerTextColor, description: '页尾文字颜色' },
+        { key: 'footerPaddingTop', value: configs.footerPaddingTop, description: '页尾顶部内边距' },
+        { key: 'footerPaddingBottom', value: configs.footerPaddingBottom, description: '页尾底部内边距' },
+        { key: 'footerShowLogo', value: configs.footerShowLogo, description: '是否显示Logo' },
+        { key: 'footerShowNavigation', value: configs.footerShowNavigation, description: '是否显示导航' },
+        { key: 'footerShowSocial', value: configs.footerShowSocial, description: '是否显示社交链接' },
+        { key: 'footerShowContact', value: configs.footerShowContact, description: '是否显示联系我们' },
+        { key: 'footerShowCopyright', value: configs.footerShowCopyright, description: '是否显示版权信息' },
+        { key: 'footerLayout', value: configs.footerLayout, description: '页尾布局方式' }
       ];
 
       // 发送保存请求
@@ -138,14 +168,114 @@ function SiteConfig() {
     }));
   };
 
+  // 根据URL自动识别图标
+  const detectIconFromUrl = (url) => {
+    const urlLower = url.toLowerCase();
+    const iconMap = {
+      'github.com': 'github',
+      'github.io': 'github',
+      'weibo.com': 'weibo',
+      'weixin.qq.com': 'wechat',
+      'qq.com': 'qq',
+      'twitter.com': 'twitter',
+      'x.com': 'twitter',
+      'facebook.com': 'facebook',
+      'fb.com': 'facebook',
+      'instagram.com': 'instagram',
+      'linkedin.com': 'linkedin',
+      'youtube.com': 'youtube',
+      'youtu.be': 'youtube',
+      'bilibili.com': 'bilibili',
+      'b23.tv': 'bilibili',
+      'zhihu.com': 'zhihu',
+      'douban.com': 'douban',
+      'jianshu.com': 'jianshu',
+      'csdn.net': 'csdn',
+      'juejin.cn': 'juejin',
+      'segmentfault.com': 'segmentfault',
+      'gitee.com': 'gitee',
+      'taobao.com': 'taobao',
+      'tmall.com': 'tmall',
+      'jd.com': 'jd',
+      'pinduoduo.com': 'pinduoduo',
+      'xiaohongshu.com': 'xiaohongshu',
+      'douyin.com': 'douyin',
+      'kuaishou.com': 'kuaishou'
+    };
+
+    for (const [domain, icon] of Object.entries(iconMap)) {
+      if (urlLower.includes(domain)) {
+        return icon;
+      }
+    }
+    return 'link';
+  };
+
+  // 获取社交链接名称
+  const getSocialNameFromUrl = (url) => {
+    const urlLower = url.toLowerCase();
+    const nameMap = {
+      'github.com': 'GitHub',
+      'github.io': 'GitHub',
+      'weibo.com': '微博',
+      'weixin.qq.com': '微信',
+      'qq.com': 'QQ',
+      'twitter.com': 'Twitter',
+      'x.com': 'Twitter',
+      'facebook.com': 'Facebook',
+      'fb.com': 'Facebook',
+      'instagram.com': 'Instagram',
+      'linkedin.com': 'LinkedIn',
+      'youtube.com': 'YouTube',
+      'youtu.be': 'YouTube',
+      'bilibili.com': '哔哩哔哩',
+      'b23.tv': '哔哩哔哩',
+      'zhihu.com': '知乎',
+      'douban.com': '豆瓣',
+      'jianshu.com': '简书',
+      'csdn.net': 'CSDN',
+      'juejin.cn': '掘金',
+      'segmentfault.com': '思否',
+      'gitee.com': 'Gitee',
+      'taobao.com': '淘宝',
+      'tmall.com': '天猫',
+      'jd.com': '京东',
+      'pinduoduo.com': '拼多多',
+      'xiaohongshu.com': '小红书',
+      'douyin.com': '抖音',
+      'kuaishou.com': '快手'
+    };
+
+    for (const [domain, name] of Object.entries(nameMap)) {
+      if (urlLower.includes(domain)) {
+        return name;
+      }
+    }
+    return '新社交';
+  };
+
   // 更新社交链接
   const updateFooterSocial = (index, field, value) => {
     setConfigs(prev => {
       const newSocial = [...prev.footerSocial];
-      newSocial[index] = {
-        ...newSocial[index],
-        [field]: value
-      };
+      
+      // 如果是更新URL，自动设置图标和名称
+      if (field === 'url' && value) {
+        const detectedIcon = detectIconFromUrl(value);
+        const detectedName = getSocialNameFromUrl(value);
+        newSocial[index] = {
+          ...newSocial[index],
+          url: value,
+          icon: detectedIcon,
+          name: newSocial[index].name === '新社交' ? detectedName : newSocial[index].name
+        };
+      } else {
+        newSocial[index] = {
+          ...newSocial[index],
+          [field]: value
+        };
+      }
+      
       return {
         ...prev,
         footerSocial: newSocial
@@ -250,6 +380,7 @@ function SiteConfig() {
             <div className="flex justify-between items-center mb-3">
               <label className="block text-sm font-medium text-gray-700">
                 社交链接
+                <span className="text-xs text-gray-500 ml-2">（输入链接后会自动识别图标和名称）</span>
               </label>
               <button
                 onClick={addFooterSocial}
@@ -259,31 +390,44 @@ function SiteConfig() {
                 <span>添加社交</span>
               </button>
             </div>
+            <div className="mb-3 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-sm text-blue-700">
+                💡 支持自动识别：GitHub、微博、微信、QQ、Twitter、Facebook、Instagram、LinkedIn、YouTube、哔哩哔哩、知乎、豆瓣、简书、CSDN、掘金、思否、Gitee、淘宝、天猫、京东、拼多多、小红书、抖音、快手等
+              </p>
+            </div>
             <div className="space-y-3">
               {configs.footerSocial.map((social, index) => (
                 <div key={index} className="flex space-x-3 items-center p-3 border border-gray-100 rounded-lg">
                   <div className="flex-1">
-                    <input
-                      type="text"
-                      value={social.name}
-                      onChange={(e) => updateFooterSocial(index, 'name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
-                      placeholder="社交名称"
-                    />
+                    <div className="flex items-center space-x-2 mb-2">
+                      <input
+                        type="text"
+                        value={social.name}
+                        onChange={(e) => updateFooterSocial(index, 'name', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                        placeholder="社交名称"
+                      />
+                      <span className="text-xs text-gray-400 px-2 py-1 bg-gray-100 rounded">
+                        {social.icon}
+                      </span>
+                    </div>
                     <input
                       type="text"
                       value={social.url}
                       onChange={(e) => updateFooterSocial(index, 'url', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple mb-2"
-                      placeholder="社交URL"
+                      placeholder="输入链接，如：https://github.com"
                     />
-                    <input
-                      type="text"
-                      value={social.icon}
-                      onChange={(e) => updateFooterSocial(index, 'icon', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
-                      placeholder="图标名称 (如: github, weibo)"
-                    />
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs text-gray-500">图标：</span>
+                      <input
+                        type="text"
+                        value={social.icon}
+                        onChange={(e) => updateFooterSocial(index, 'icon', e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                        placeholder="可手动修改图标"
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => deleteFooterSocial(index)}
@@ -308,6 +452,125 @@ function SiteConfig() {
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
               placeholder="请输入联系我们信息"
             />
+          </div>
+
+          {/* 样式配置 */}
+          <div className="border-t border-gray-200 pt-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">样式配置</h3>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* 背景色 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  背景色
+                </label>
+                <div className="flex space-x-3">
+                  <input
+                    type="color"
+                    value={configs.footerBackgroundColor}
+                    onChange={(e) => handleInputChange('footerBackgroundColor', e.target.value)}
+                    className="w-12 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={configs.footerBackgroundColor}
+                    onChange={(e) => handleInputChange('footerBackgroundColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  />
+                </div>
+              </div>
+
+              {/* 文字颜色 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  文字颜色
+                </label>
+                <div className="flex space-x-3">
+                  <input
+                    type="color"
+                    value={configs.footerTextColor}
+                    onChange={(e) => handleInputChange('footerTextColor', e.target.value)}
+                    className="w-12 h-12 rounded-lg border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={configs.footerTextColor}
+                    onChange={(e) => handleInputChange('footerTextColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  />
+                </div>
+              </div>
+
+              {/* 顶部内边距 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  顶部内边距
+                </label>
+                <input
+                  type="text"
+                  value={configs.footerPaddingTop}
+                  onChange={(e) => handleInputChange('footerPaddingTop', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  placeholder="如: 3rem, 48px"
+                />
+              </div>
+
+              {/* 底部内边距 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  底部内边距
+                </label>
+                <input
+                  type="text"
+                  value={configs.footerPaddingBottom}
+                  onChange={(e) => handleInputChange('footerPaddingBottom', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  placeholder="如: 3rem, 48px"
+                />
+              </div>
+
+              {/* 布局方式 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  布局方式
+                </label>
+                <select
+                  value={configs.footerLayout}
+                  onChange={(e) => handleInputChange('footerLayout', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                >
+                  <option value="grid">网格布局</option>
+                  <option value="flex">弹性布局</option>
+                  <option value="stacked">堆叠布局</option>
+                </select>
+              </div>
+            </div>
+
+            {/* 显示/隐藏选项 */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                显示内容
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { key: 'footerShowLogo', label: '显示Logo' },
+                  { key: 'footerShowNavigation', label: '显示导航' },
+                  { key: 'footerShowSocial', label: '显示社交链接' },
+                  { key: 'footerShowContact', label: '显示联系我们' },
+                  { key: 'footerShowCopyright', label: '显示版权信息' }
+                ].map((item) => (
+                  <label key={item.key} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={configs[item.key] === 'true'}
+                      onChange={(e) => handleInputChange(item.key, e.target.checked ? 'true' : 'false')}
+                      className="w-4 h-4 text-planet-purple border-gray-300 rounded focus:ring-planet-purple"
+                    />
+                    <span className="text-sm text-gray-700">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* 保存按钮 */}

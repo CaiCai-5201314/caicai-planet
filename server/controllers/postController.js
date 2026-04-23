@@ -1,6 +1,8 @@
-const { Post, User, Category, Tag, Comment, Like, Favorite, Sequelize } = require('../models');
+const db = require('../models');
+const { Post, User, Category, Tag, Comment, Like, Favorite, Sequelize } = db;
 const { Op } = Sequelize;
 const { createNotification } = require('./notificationController');
+const { applyMoonPoints } = require('../services/moonPointService');
 
 // 全局浏览记录缓存，用于防重复点击
 const viewRecords = new Map();
@@ -24,18 +26,18 @@ const postController = {
         ];
       }
 
-      let order = [['created_at', 'DESC']];
+      let order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['created_at', 'DESC']];
       if (sort === 'popular') {
-        order = [['view_count', 'DESC']];
+        order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['view_count', 'DESC']];
       } else if (sort === 'most_liked') {
-        order = [['like_count', 'DESC']];
+        order = [['is_pinned', 'DESC'], ['pinned_at', 'DESC'], ['like_count', 'DESC']];
       }
 
       const include = [
         {
           model: User,
           as: 'author',
-          attributes: ['id', 'username', 'nickname', 'avatar']
+          attributes: ['id', 'uid', 'username', 'nickname', 'avatar', 'exp']
         }
       ];
 
@@ -78,7 +80,7 @@ const postController = {
           {
             model: User,
             as: 'author',
-            attributes: ['id', 'username', 'nickname', 'avatar', 'bio']
+            attributes: ['id', 'uid', 'username', 'nickname', 'avatar', 'bio', 'exp']
           }
         ]
       });
@@ -126,12 +128,31 @@ const postController = {
   },
 
   createPost: async (req, res) => {
+    console.log('[createPost] 开始创建文章...');
     try {
       const { title, content, summary } = req.body;
+      console.log('[createPost] 用户ID:', req.user?.id);
+      console.log('[createPost] 标题:', title);
 
       if (!title || !content) {
         return res.status(400).json({ message: '请提供标题和内容' });
       }
+
+      const userId = req.user.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // 检查今日是否已经发布过文章（用于判断是否是首次）
+      const todayPosts = await db.UserDailyPost.findAll({
+        where: {
+          user_id: userId,
+          date: today
+        }
+      });
+      const isFirstPostToday = todayPosts.length === 0;
+      console.log(`[createPost] 今日已发布${todayPosts.length}篇，是否首次: ${isFirstPostToday}`);
 
       const slug = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
 
@@ -140,26 +161,54 @@ const postController = {
         cover_image = `/uploads/posts/${req.file.filename}`;
       }
 
+      console.log('[createPost] 准备创建Post...');
       const post = await Post.create({
         title,
         content,
         summary: summary || content.substring(0, 200),
         cover_image,
-        author_id: req.user.id,
+        author_id: userId,
         status: 'published',
         slug: `${slug}-${Date.now()}`
       });
+      console.log('[createPost] Post创建成功, ID:', post.id);
 
+      // 记录今日发布的文章（防止删除后重新发布重复计算）
+      await db.UserDailyPost.create({
+        user_id: userId,
+        post_id: post.id,
+        date: today
+      });
+      console.log('[createPost] 已记录今日发布文章');
+
+      // 集成月球分规则系统 - 申请/发放创作文章月球分
+      let moonPointResult = null;
+      try {
+        console.log('[createPost] 开始调用applyMoonPoints...');
+        moonPointResult = await applyMoonPoints(userId, 'create_post', post.id);
+        console.log('[createPost] applyMoonPoints结果:', moonPointResult);
+        
+        // 添加是否是今日首次发布的信息
+        if (moonPointResult) {
+          moonPointResult.isFirstPostToday = isFirstPostToday;
+        }
+      } catch (moonPointError) {
+        console.error('[createPost] 发放月球分失败:', moonPointError);
+        // 不影响文章创建成功
+      }
+
+      console.log('[createPost] 准备返回响应...');
       res.status(201).json({
         message: '文章发布成功',
         post: await Post.findByPk(post.id, {
           include: [
             { model: User, as: 'author', attributes: ['id', 'username', 'nickname', 'avatar'] }
           ]
-        })
+        }),
+        moonPoint: moonPointResult
       });
     } catch (error) {
-      console.error('创建文章错误:', error);
+      console.error('[createPost] 创建文章错误:', error);
       res.status(500).json({ message: '创建文章失败' });
     }
   },
@@ -289,6 +338,39 @@ const postController = {
     } catch (error) {
       console.error('收藏错误:', error);
       res.status(500).json({ message: '收藏失败' });
+    }
+  },
+
+  togglePin: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: '只有管理员可以置顶文章' });
+      }
+
+      const post = await Post.findByPk(id);
+
+      if (!post) {
+        return res.status(404).json({ message: '文章不存在' });
+      }
+
+      const newPinnedStatus = !post.is_pinned;
+      const newPinnedAt = newPinnedStatus ? new Date() : null;
+
+      await post.update({
+        is_pinned: newPinnedStatus,
+        pinned_at: newPinnedAt
+      });
+
+      res.json({ 
+        message: newPinnedStatus ? '文章置顶成功' : '取消置顶成功',
+        is_pinned: newPinnedStatus,
+        pinned_at: newPinnedAt
+      });
+    } catch (error) {
+      console.error('置顶文章错误:', error);
+      res.status(500).json({ message: '置顶文章失败' });
     }
   }
 };

@@ -1,27 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiLock, FiBell, FiCamera, FiSave, FiX, FiCheck } from 'react-icons/fi';
+import { FiUser, FiLock, FiSave, FiTrash2, FiSun, FiMoon, FiX, FiArrowLeft } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import Cropper from 'react-easy-crop';
-import 'react-easy-crop/react-easy-crop.css';
 
 export default function Settings() {
-  const { user, isAuthenticated, updateProfile, updateAvatar, updateCover } = useAuthStore();
+  const { user, isAuthenticated, setAdminUser } = useAuthStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('profile');
 
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
     }
   }, [isAuthenticated, navigate]);
-  const [profileForm, setProfileForm] = useState({
-    nickname: '',
-    bio: ''
-  });
 
   const [securityForm, setSecurityForm] = useState({
     username: '',
@@ -33,39 +26,46 @@ export default function Settings() {
     newPassword: '',
     confirmPassword: ''
   });
-  const [coverStyle, setCoverStyle] = useState('cover'); // cover, contain, stretch, center
-  const [isCropping, setIsCropping] = useState(false);
-  const [cropImage, setCropImage] = useState(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  
+  // 偏好设置
+  const [preferenceSettings, setPreferenceSettings] = useState({
+    theme: 'light',
+    language: 'zh-CN'
+  });
+
+  // 注销账号弹窗状态
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // 处理注销账号
+  const handleDeleteAccount = async () => {
+    try {
+      await api.delete('/auth/account');
+      toast.success('账号已注销完成，欢迎您的使用，下次见~');
+      // 清除本地存储
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // 跳转到登录页
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    } catch (error) {
+      toast.error(error.response?.data?.message || '账号注销失败');
+    }
+  };
 
   useEffect(() => {
-    console.log('用户对象:', user);
     if (user) {
-      setProfileForm({
-        nickname: user.nickname || '',
-        bio: user.bio || ''
-      });
       setSecurityForm({
         username: user.username || '',
         email: user.email || ''
       });
-      if (user.cover_style) {
-        setCoverStyle(user.cover_style);
-      }
+      // 初始化偏好设置
+      setPreferenceSettings({
+        theme: user.theme || 'light',
+        language: user.language || 'zh-CN'
+      });
     }
   }, [user]);
-
-  const handleProfileSubmit = async (e) => {
-    e.preventDefault();
-    const result = await updateProfile({ ...profileForm, cover_style: coverStyle });
-    if (result.success) {
-      toast.success('资料更新成功');
-    } else {
-      toast.error(result.error || '更新失败');
-    }
-  };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
@@ -85,295 +85,63 @@ export default function Settings() {
     }
   };
 
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('avatar', file);
-
+  const handlePreferenceChange = async (key, value) => {
     try {
-      console.log('开始上传头像');
-      const response = await api.post('/users/avatar', formData);
-      console.log('上传响应:', response);
-      console.log('响应数据:', response.data);
-      const newAvatar = response.data.avatar;
-      console.log('新头像:', newAvatar);
-      console.log('更新前的用户对象:', user);
-      updateAvatar(newAvatar);
-      console.log('更新后的用户对象:', user);
-      toast.success('头像上传成功');
+      const newSettings = { ...preferenceSettings, [key]: value };
+      setPreferenceSettings(newSettings);
+      const response = await api.put('/users/settings', newSettings);
+      setAdminUser(response.data.user);
+      // 不需要显示成功提示，因为设置会立即生效
     } catch (error) {
-      console.error('上传错误:', error);
-      toast.error('上传失败');
+      toast.error(error.response?.data?.message || '保存失败');
     }
   };
-
-  const handleCoverUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setCropImage(event.target.result);
-      setIsCropping(true);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCropComplete = (croppedArea, croppedAreaPixels) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
-
-  const generateCroppedImage = async () => {
-    if (!cropImage || !croppedAreaPixels) return;
-
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const image = new Image();
-
-      image.onload = async () => {
-        canvas.width = 1200; // 固定宽度
-        canvas.height = 400; // 固定高度
-
-        ctx.drawImage(
-          image,
-          croppedAreaPixels.x,
-          croppedAreaPixels.y,
-          croppedAreaPixels.width,
-          croppedAreaPixels.height,
-          0,
-          0,
-          canvas.width,
-          canvas.height
-        );
-
-        canvas.toBlob(async (blob) => {
-          const formData = new FormData();
-          formData.append('cover', blob, 'cover.jpg');
-
-          try {
-            const response = await api.post('/users/cover', formData);
-            console.log('上传响应:', response);
-            console.log('响应数据:', response.data);
-            const newCover = response.data.cover_image;
-            console.log('新背景:', newCover);
-            updateCover(newCover);
-            setIsCropping(false);
-            setCropImage(null);
-            toast.success('背景上传成功');
-          } catch (error) {
-            console.error('上传错误:', error);
-            toast.error('上传失败');
-          }
-        }, 'image/jpeg', 0.8);
-      };
-
-      image.src = cropImage;
-    } catch (error) {
-      console.error('裁剪错误:', error);
-      toast.error('裁剪失败');
-    }
-  };
-
-  const tabs = [
-    { id: 'profile', label: '个人资料', icon: FiUser },
-    { id: 'password', label: '账号安全', icon: FiLock },
-  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       
       <div className="pt-24 pb-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">设置</h1>
-
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="md:w-64">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-6 py-4 text-left transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-planet-purple/5 text-planet-purple border-l-4 border-planet-purple'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <tab.icon size={20} />
-                    <span className="font-medium">{tab.label}</span>
-                  </button>
-                ))}
-              </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <div className="flex items-center space-x-4 mb-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              >
+                <FiArrowLeft size={20} />
+                <span>返回</span>
+              </button>
             </div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">设置</h1>
+            <p className="text-gray-500 dark:text-gray-400">管理您的账号和偏好设置</p>
+          </div>
 
-            <div className="flex-1">
-              {activeTab === 'profile' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">个人资料</h2>
-                  
-                  {/* 背景图片上传 */}
-                  <div className="mb-8">
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">个人背景</h3>
-                    <div className="relative h-40 md:h-56 overflow-hidden rounded-2xl mb-4">
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          backgroundImage: `url(${user?.cover_image || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1600'})`,
-                          backgroundSize: coverStyle === 'stretch' ? '100% 100%' : coverStyle,
-                          backgroundPosition: 'center',
-                          backgroundRepeat: 'no-repeat'
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                      <label className="absolute bottom-4 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center space-x-2 cursor-pointer hover:bg-white/30">
-                        <FiCamera size={16} />
-                        <span>更换背景</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCoverUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">账号设置</h2>
+                <p className="text-gray-500 dark:text-gray-400">管理您的账号安全和偏好设置</p>
+              </div>
+              
+              <div className="space-y-8">
+                {/* 账号安全 */}
+                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800 dark:to-gray-700/50 rounded-2xl">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">账号安全</h3>
+                    <p className="text-gray-500 dark:text-gray-400">保护您的账号安全</p>
                   </div>
-
-                  {/* 裁剪模态框 */}
-                  {isCropping && cropImage && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-                      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                          <h3 className="text-lg font-bold text-gray-900">裁剪背景图片</h3>
-                          <button
-                            onClick={() => {
-                              setIsCropping(false);
-                              setCropImage(null);
-                              setCrop({ x: 0, y: 0 });
-                              setZoom(1);
-                              setCroppedAreaPixels(null);
-                            }}
-                            className="p-2 hover:bg-gray-100 rounded-full"
-                          >
-                            <FiX size={20} className="text-gray-600" />
-                          </button>
-                        </div>
-                        <div className="p-4">
-                          <div className="relative h-[500px] mb-4">
-                            <Cropper
-                              image={cropImage}
-                              crop={crop}
-                              zoom={zoom}
-                              aspect={3 / 1} // 3:1的宽高比，适合背景图
-                              onCropChange={setCrop}
-                              onZoomChange={setZoom}
-                              onCropComplete={handleCropComplete}
-                              className="rounded-lg overflow-hidden"
-                            />
-                          </div>
-                          <div className="flex justify-end space-x-3">
-                            <button
-                              onClick={() => {
-                                setIsCropping(false);
-                                setCropImage(null);
-                                setCrop({ x: 0, y: 0 });
-                                setZoom(1);
-                                setCroppedAreaPixels(null);
-                              }}
-                              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                            >
-                              取消
-                            </button>
-                            <button
-                              onClick={generateCroppedImage}
-                              className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 flex items-center space-x-2"
-                            >
-                              <FiCheck size={16} />
-                              <span>确认裁剪</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* 头像上传 */}
-                  <div className="flex items-center space-x-6 mb-8">
-                    <div className="relative">
-                      <img
-                        src={user?.avatar && user.avatar.length > 0 ? user.avatar : 'https://via.placeholder.com/150'}
-                        alt={user?.nickname || user?.username}
-                        className="w-24 h-24 rounded-2xl object-cover"
-                        onError={(e) => {
-                          e.target.src = 'https://via.placeholder.com/150';
-                        }}
-                      />
-                      <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-planet-purple text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-planet-purple/90">
-                        <FiCamera size={16} />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900">{user?.nickname || user?.username}</h3>
-                      <p className="text-gray-500 text-sm">@{user?.username}</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleProfileSubmit} className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        昵称
-                      </label>
-                      <input
-                        type="text"
-                        value={profileForm.nickname}
-                        onChange={(e) => setProfileForm({ ...profileForm, nickname: e.target.value })}
-                        className="input-field"
-                        placeholder="你的昵称"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        个人简介
-                      </label>
-                      <textarea
-                        value={profileForm.bio}
-                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        className="input-field"
-                        rows={4}
-                        placeholder="介绍一下你自己"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
-                    >
-                      <FiSave size={18} />
-                      <span>保存修改</span>
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {activeTab === 'password' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">账号安全</h2>
                   
                   <div className="space-y-8">
                     {/* 用户名修改 */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">修改用户名</h3>
-                      <p className="text-sm text-gray-500 mb-4">用户名7天只能修改一次</p>
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/50">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-planet-purple/10 dark:bg-planet-purple/20 rounded-xl flex items-center justify-center">
+                          <FiUser size={20} className="text-planet-purple" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改用户名</h4>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">用户名7天只能修改一次</p>
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         try {
@@ -384,30 +152,35 @@ export default function Settings() {
                         }
                       }} className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             新用户名
                           </label>
                           <input
                             type="text"
                             value={securityForm.username}
                             onChange={(e) => setSecurityForm({ ...securityForm, username: e.target.value })}
-                            className="input-field"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                             placeholder="请输入新用户名"
                           />
                         </div>
                         <button
                           type="submit"
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
+                          className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
                         >
-                          <FiSave size={18} />
+                          <FiSave size={20} />
                           <span>修改用户名</span>
                         </button>
                       </form>
                     </div>
 
                     {/* 邮箱修改 */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">修改邮箱</h3>
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/50">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-planet-purple/10 dark:bg-planet-purple/20 rounded-xl flex items-center justify-center">
+                          <FiLock size={20} className="text-planet-purple" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改邮箱</h4>
+                      </div>
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         try {
@@ -416,37 +189,34 @@ export default function Settings() {
                             verificationCode: securityForm.verificationCode 
                           });
                           toast.success('邮箱修改成功');
-                          // 更新用户信息
-                          const userResponse = await api.get('/auth/me');
-                          setUser(userResponse.data.user);
                         } catch (error) {
                           toast.error(error.response?.data?.message || '邮箱修改失败');
                         }
                       }} className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             新邮箱
                           </label>
                           <input
                             type="email"
                             value={securityForm.email}
                             onChange={(e) => setSecurityForm({ ...securityForm, email: e.target.value })}
-                            className="input-field"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                             placeholder="请输入新邮箱"
                           />
                         </div>
 
                         {securityForm.email !== user?.email && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                               验证码
                             </label>
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-3">
                               <input
                                 type="text"
                                 value={securityForm.verificationCode || ''}
                                 onChange={(e) => setSecurityForm({ ...securityForm, verificationCode: e.target.value })}
-                                className="input-field flex-1"
+                                className="flex-1 px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                                 placeholder="请输入验证码"
                               />
                               <button
@@ -463,7 +233,7 @@ export default function Settings() {
                                     toast.error(error.response?.data?.message || '发送验证码失败');
                                   }
                                 }}
-                                className="px-4 py-2 bg-planet-purple text-white rounded-xl hover:bg-planet-purple/90 whitespace-nowrap"
+                                className="px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl hover:shadow-lg transition-all font-medium whitespace-nowrap"
                               >
                                 发送验证码
                               </button>
@@ -473,20 +243,25 @@ export default function Settings() {
 
                         <button
                           type="submit"
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
+                          className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
                         >
-                          <FiSave size={18} />
+                          <FiSave size={20} />
                           <span>修改邮箱</span>
                         </button>
                       </form>
                     </div>
 
                     {/* 密码修改 */}
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">修改密码</h3>
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-gray-900/50">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-planet-purple/10 dark:bg-planet-purple/20 rounded-xl flex items-center justify-center">
+                          <FiLock size={20} className="text-planet-purple" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改密码</h4>
+                      </div>
                       <form onSubmit={handlePasswordSubmit} className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             当前密码
                           </label>
                           <input
@@ -495,13 +270,13 @@ export default function Settings() {
                             autoComplete="current-password"
                             value={passwordForm.oldPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
-                            className="input-field"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                             placeholder="请输入当前密码"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             新密码
                           </label>
                           <input
@@ -510,14 +285,14 @@ export default function Settings() {
                             autoComplete="new-password"
                             value={passwordForm.newPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                            className="input-field"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                             placeholder="至少6个字符"
                             minLength={6}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                             确认新密码
                           </label>
                           <input
@@ -526,34 +301,153 @@ export default function Settings() {
                             autoComplete="new-password"
                             value={passwordForm.confirmPassword}
                             onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                            className="input-field"
+                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
                             placeholder="请再次输入新密码"
                           />
                         </div>
 
                         <button
                           type="submit"
-                          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
+                          className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
                         >
-                          <FiSave size={18} />
+                          <FiSave size={20} />
                           <span>修改密码</span>
                         </button>
                       </form>
                     </div>
+
+
                   </div>
                 </div>
-              )}
+              
+                {/* 偏好设置 */}
+                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100/50 dark:from-gray-800 dark:to-gray-700/50 rounded-2xl">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="w-10 h-10 bg-planet-purple/10 dark:bg-planet-purple/20 rounded-xl flex items-center justify-center">
+                      <FiSun size={20} className="text-planet-purple" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">偏好设置</h3>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">主题设置</label>
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { value: 'light', label: '浅色主题', icon: FiSun },
+                          { value: 'dark', label: '深色主题', icon: FiMoon }
+                        ].map((theme) => (
+                          <div 
+                            key={theme.value} 
+                            onClick={() => handlePreferenceChange('theme', theme.value)}
+                            className={`flex items-center space-x-3 p-4 rounded-xl cursor-pointer hover:bg-white dark:hover:bg-gray-700 transition-colors border-2 ${
+                              preferenceSettings.theme === theme.value
+                                ? 'border-planet-purple bg-planet-purple/5'
+                                : 'border-gray-200 dark:border-gray-600'
+                            }`}
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                preferenceSettings.theme === theme.value
+                                  ? 'border-planet-purple bg-planet-purple'
+                                  : 'border-gray-300 dark:border-gray-500'
+                              }`}
+                            >
+                              {preferenceSettings.theme === theme.value && (
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                              )}
+                            </div>
+                            <theme.icon size={20} className={`${preferenceSettings.theme === theme.value ? 'text-planet-purple' : 'text-gray-600 dark:text-gray-400'}`} />
+                            <span className={`${preferenceSettings.theme === theme.value ? 'text-planet-purple font-medium' : 'text-gray-700 dark:text-gray-300'}`}>{theme.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
 
-              {activeTab === 'notifications' && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">通知设置</h2>
-                  <p className="text-gray-500">通知功能开发中...</p>
+
+                  </div>
                 </div>
-              )}
+              
+                {/* 注销账号 */}
+                <div className="p-6 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-2xl border-2 border-red-100 dark:border-red-800">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
+                      <FiTrash2 size={20} className="text-red-600 dark:text-red-400" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">注销账号</h4>
+                  </div>
+                  <p className="text-sm text-red-700 dark:text-red-400 mb-6">
+                    注销账号将永久删除您的所有数据，此操作不可恢复！
+                  </p>
+                  <button
+                    onClick={() => setIsDeleteModalOpen(true)}
+                    className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-red-500/25 transition-all duration-300 hover:scale-[1.02]"
+                  >
+                    <FiTrash2 size={20} />
+                    <span>注销账号</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* 注销账号确认弹窗 */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 to-rose-600 px-8 py-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-white">确认注销</h3>
+                  <p className="text-red-100 mt-1">永久删除账号和所有数据</p>
+                </div>
+                <button 
+                  onClick={() => setIsDeleteModalOpen(false)} 
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <FiX size={28} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiTrash2 size={32} className="text-red-500" />
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 text-lg">
+                  确定要注销账号吗？
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">
+                  此操作不可恢复，所有数据将被永久删除！
+                </p>
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  className="flex-1 px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDeleteModalOpen(false);
+                    handleDeleteAccount();
+                  }}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-rose-700 transition-all flex items-center justify-center"
+                >
+                  <FiTrash2 size={18} className="mr-2" />
+                  确认注销
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -123,7 +123,7 @@ export default function TaskDetail() {
     try {
       setActionLoading(true);
       const response = await api.post(`/user-tasks/${id}/complete`);
-      toast.success(`任务完成！获得 ${response.data.reward} 积分`);
+      toast.success(`任务完成！获得 ${response.data.reward} 积分，月球分待审核`);
       setTaskStatus(prev => ({ ...prev, completed: true }));
     } catch (error) {
       console.error('完成任务失败:', error);
@@ -211,7 +211,7 @@ export default function TaskDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <Navbar />
         <div className="pt-24 flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-planet-purple" />
@@ -222,11 +222,11 @@ export default function TaskDetail() {
 
   if (error || !task) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
         <Navbar />
         <div className="pt-24 text-center py-12">
           <div className="text-6xl mb-4">😕</div>
-          <h2 className="text-2xl font-bold text-gray-900">{error || '任务不存在'}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{error || '任务不存在'}</h2>
           <button
             onClick={() => navigate('/tasks')}
             className="mt-6 px-6 py-2 bg-planet-purple text-white rounded-full font-medium hover:bg-planet-purple/90 transition-colors"
@@ -329,7 +329,7 @@ export default function TaskDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       
       <div className="pt-24 pb-12">
@@ -338,7 +338,7 @@ export default function TaskDetail() {
           <div className="flex items-center mb-6">
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center space-x-2 px-4 py-2 bg-white border border-gray-200 rounded-full font-medium hover:border-planet-purple hover:text-planet-purple transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full font-medium hover:border-planet-purple hover:text-planet-purple transition-colors text-gray-900 dark:text-white"
             >
               <FiArrowLeft size={18} />
               <span>返回</span>
@@ -346,7 +346,7 @@ export default function TaskDetail() {
           </div>
 
           {/* 任务详情卡片 */}
-          <div className={`bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden mb-8`}>
+          <div className={`bg-white dark:bg-gray-800 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden mb-8`}>
             {/* 头部 */}
             <div className={`bg-gradient-to-r ${gradientColor} p-8 text-white`}>
               <div className="flex items-center justify-between mb-4">
@@ -372,57 +372,90 @@ export default function TaskDetail() {
             <div className="p-8">
               {/* 描述 */}
               <div className="mb-8">
-                <h2 className="text-lg font-bold text-gray-900 mb-3">任务描述</h2>
-                <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">任务描述</h2>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                   {task.description || '暂无描述'}
                 </p>
               </div>
 
               {/* 信息网格 */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center text-gray-500 mb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                  <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
                     <FiAward size={16} className="mr-2" />
                     <span className="text-sm">奖励积分</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{task.reward}</p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{task.reward}</p>
                 </div>
                 
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <div className="flex items-center text-gray-500 mb-1">
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                  <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
                     <FiUser size={16} className="mr-2" />
                     <span className="text-sm">参与人数</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
                     {task.currentParticipants || 0}
                     {task.maxParticipants && `/${task.maxParticipants}`}
                   </p>
                 </div>
 
-                {task.startTime && (
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <div className="flex items-center text-gray-500 mb-1">
-                      <FiCalendar size={16} className="mr-2" />
-                      <span className="text-sm">开始时间</span>
+                {task.proposalUser && (
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                    <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
+                      <FiUser size={16} className="mr-2" />
+                      <span className="text-sm">提议用户</span>
                     </div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {new Date(task.startTime).toLocaleDateString()}
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {task.proposalUser.nickname || task.proposalUser.username || '未知用户'}
                     </p>
                   </div>
                 )}
 
                 {task.endTime && (
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <div className="flex items-center text-gray-500 mb-1">
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                    <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
                       <FiClock size={16} className="mr-2" />
                       <span className="text-sm">截止时间</span>
                     </div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {new Date(task.endTime).toLocaleDateString()}
                     </p>
                   </div>
                 )}
               </div>
+
+              {/* 建议游玩时间和任务道具 */}
+              {(task.suggestedTime || task.items) && (
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6 mb-8">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">任务详情</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {task.suggestedTime && (
+                      <div>
+                        <div className="flex items-center text-gray-500 dark:text-gray-400 mb-2">
+                          <FiClock size={18} className="mr-2" />
+                          <span className="text-sm font-medium">建议游玩时间</span>
+                        </div>
+                        <p className="text-gray-900 dark:text-white">{task.suggestedTime}</p>
+                      </div>
+                    )}
+                    {task.items && (
+                      <div>
+                        <div className="flex items-center text-gray-500 dark:text-gray-400 mb-2">
+                          <FiLayers size={18} className="mr-2" />
+                          <span className="text-sm font-medium">所需道具</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {task.items.split(',').map((item, index) => (
+                            <span key={index} className="px-3 py-1 bg-white dark:bg-gray-600 rounded-full text-sm text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-500">
+                              {item.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 操作按钮 */}
               {renderActionButtons()}
@@ -430,10 +463,10 @@ export default function TaskDetail() {
           </div>
 
           {/* 评论区 */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
             <div className="flex items-center mb-6">
               <FiMessageSquare size={24} className="text-planet-purple mr-3" />
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 任务讨论 ({comments.length})
               </h2>
             </div>
@@ -441,13 +474,13 @@ export default function TaskDetail() {
             {/* 评论输入 */}
             <div className="mb-8">
               {replyTo && (
-                <div className="flex items-center justify-between mb-3 p-3 bg-blue-50 rounded-lg">
-                  <span className="text-sm text-blue-600">
+                <div className="flex items-center justify-between mb-3 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <span className="text-sm text-blue-600 dark:text-blue-300">
                     回复: {getReplyComment(replyTo)?.user?.nickname || getReplyComment(replyTo)?.user?.username}
                   </span>
                   <button 
                     onClick={cancelReply}
-                    className="text-blue-400 hover:text-blue-600"
+                    className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-200"
                   >
                     取消
                   </button>
@@ -461,7 +494,7 @@ export default function TaskDetail() {
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder={isAuthenticated ? "分享你的想法..." : "请先登录后评论"}
                     disabled={!isAuthenticated || commentLoading}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none resize-none"
+                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none resize-none"
                     rows={3}
                   />
                 </div>
@@ -483,17 +516,20 @@ export default function TaskDetail() {
             <div className="space-y-6">
               {comments.length > 0 ? (
                 comments.map((comment) => (
-                  <div key={comment.id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
+                  <div key={comment.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 pb-6 last:pb-0">
                     <div className="flex space-x-4">
                       <img
-                        src={comment.user?.avatar || 'https://via.placeholder.com/40'}
+                        src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? comment.user.avatar : '/moren.png'}
                         alt={comment.user?.nickname || comment.user?.username}
                         className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          e.target.src = '/moren.png';
+                        }}
                       />
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900">
+                            <span className="font-medium text-gray-900 dark:text-white">
                               {comment.user?.nickname || comment.user?.username}
                             </span>
                             <span className="text-sm text-gray-400">
@@ -507,28 +543,31 @@ export default function TaskDetail() {
                             回复
                           </button>
                         </div>
-                        <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{comment.content}</p>
 
                         {/* 回复列表 */}
                         {comment.replies && comment.replies.length > 0 && (
-                          <div className="mt-4 space-y-3 pl-4 border-l-2 border-gray-100">
+                          <div className="mt-4 space-y-3 pl-4 border-l-2 border-gray-100 dark:border-gray-700">
                             {comment.replies.map((reply) => (
                               <div key={reply.id} className="flex space-x-3">
                                 <img
-                                  src={reply.user?.avatar || 'https://via.placeholder.com/32'}
+                                  src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? reply.user.avatar : '/moren.png'}
                                   alt={reply.user?.nickname || reply.user?.username}
                                   className="w-8 h-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = '/moren.png';
+                                  }}
                                 />
                                 <div className="flex-1">
                                   <div className="flex items-center space-x-2 mb-1">
-                                    <span className="font-medium text-sm text-gray-900">
+                                    <span className="font-medium text-sm text-gray-900 dark:text-white">
                                       {reply.user?.nickname || reply.user?.username}
                                     </span>
                                     <span className="text-xs text-gray-400">
                                       {new Date(reply.created_at).toLocaleString()}
                                     </span>
                                   </div>
-                                  <p className="text-sm text-gray-600">{reply.content}</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400">{reply.content}</p>
                                 </div>
                               </div>
                             ))}
@@ -540,10 +579,10 @@ export default function TaskDetail() {
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                     <FiMessageSquare className="text-gray-400" size={32} />
                   </div>
-                  <p className="text-gray-500">暂无评论，来说点什么吧~</p>
+                  <p className="text-gray-500 dark:text-gray-400">暂无评论，来说点什么吧~</p>
                 </div>
               )}
             </div>

@@ -1,5 +1,7 @@
-import { FiHeart, FiUsers, FiBookOpen, FiStar, FiCode, FiCoffee, FiSmile } from 'react-icons/fi';
+import { FiHeart, FiUsers, FiBookOpen, FiStar, FiCode, FiCoffee, FiSmile, FiArrowLeft } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAuthStore } from '../store/authStore';
 
 const stats = [
   { icon: FiUsers, label: '注册用户', value: '50+' },
@@ -40,11 +42,24 @@ const timeline = [
 ];
 
 export default function About() {
+  const { isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       
       <div className="pt-20">
+        {/* 返回按钮 */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <FiArrowLeft size={20} />
+            <span>返回</span>
+          </button>
+        </div>
         {/* 英雄区域 */}
         <div className="relative py-24 bg-gradient-to-br from-planet-purple to-planet-pink overflow-hidden">
           <div className="absolute inset-0 bg-black/20" />
@@ -65,23 +80,23 @@ export default function About() {
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-planet-purple/10 to-planet-pink/10 flex items-center justify-center mb-4 transform transition-transform hover:scale-110">
                   <stat.icon className="text-2xl text-planet-purple" />
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                <div className="text-gray-600">{stat.label}</div>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.value}</div>
+                <div className="text-gray-600 dark:text-gray-400">{stat.label}</div>
               </div>
             ))}
           </div>
 
           {/* 核心功能 */}
           <div className="mb-20">
-            <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">核心功能</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-12 text-center">核心功能</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {features.map((feature, index) => (
-                <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div key={index} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-planet-purple/10 to-planet-pink/10 flex items-center justify-center mb-4">
                     <feature.icon className="text-xl text-planet-purple" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm">{feature.description}</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{feature.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">{feature.description}</p>
                 </div>
               ))}
             </div>
@@ -90,8 +105,8 @@ export default function About() {
           {/* 关于我们 */}
           <div className="grid lg:grid-cols-2 gap-16 mb-20">
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">我们的故事</h2>
-              <div className="space-y-4 text-gray-600 leading-relaxed">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">我们的故事</h2>
+              <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed">
                 <p>
                   菜菜星球诞生于对知识分享和社区建设的热爱。我们相信，每个人都有独特的知识和经验值得分享，
                   每个想法都可能启发他人，每个声音都值得被倾听。
@@ -107,7 +122,7 @@ export default function About() {
               </div>
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-6">我们的价值观</h2>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">我们的价值观</h2>
               <div className="space-y-4">
                 {[
                   { title: '开放包容', desc: '尊重每一种观点，欢迎不同背景的朋友，构建多元文化社区' },
@@ -121,8 +136,8 @@ export default function About() {
                       <span className="text-white text-sm font-bold">{index + 1}</span>
                     </div>
                     <div>
-                      <h3 className="font-bold text-gray-900">{value.title}</h3>
-                      <p className="text-gray-600 text-sm">{value.desc}</p>
+                      <h3 className="font-bold text-gray-900 dark:text-white">{value.title}</h3>
+                      <p className="text-gray-600 dark:text-gray-400 text-sm">{value.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -132,9 +147,9 @@ export default function About() {
 
           {/* 发展历程 */}
           <div className="mb-20">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">发展历程</h2>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">发展历程</h2>
             <div className="relative">
-              <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gray-200" />
+              <div className="absolute left-1/2 transform -translate-x-1/2 h-full w-0.5 bg-gray-200 dark:bg-gray-700" />
               <div className="space-y-12">
                 {timeline.map((item, index) => (
                   <div
@@ -145,18 +160,18 @@ export default function About() {
                       {index % 2 === 0 && (
                         <>
                           <div className="text-sm text-planet-purple font-medium mb-1">{item.date}</div>
-                          <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
-                          <p className="text-gray-600">{item.description}</p>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{item.title}</h3>
+                          <p className="text-gray-600 dark:text-gray-400">{item.description}</p>
                         </>
                       )}
                     </div>
-                    <div className="relative z-10 w-4 h-4 rounded-full bg-gradient-to-br from-planet-purple to-planet-pink border-4 border-white shadow" />
+                    <div className="relative z-10 w-4 h-4 rounded-full bg-gradient-to-br from-planet-purple to-planet-pink border-4 border-white dark:border-gray-900 shadow" />
                     <div className="w-1/2 pl-8">
                       {index % 2 === 1 && (
                         <>
                           <div className="text-sm text-planet-purple font-medium mb-1">{item.date}</div>
-                          <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
-                          <p className="text-gray-600">{item.description}</p>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{item.title}</h3>
+                          <p className="text-gray-600 dark:text-gray-400">{item.description}</p>
                         </>
                       )}
                     </div>
@@ -168,18 +183,22 @@ export default function About() {
 
           {/* 加入我们 */}
           <div className="bg-gradient-to-br from-planet-purple to-planet-pink rounded-3xl p-12 text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">加入我们</h2>
+            <h2 className="text-3xl font-bold mb-4">{isAuthenticated ? '欢迎回来' : '加入我们'}</h2>
             <p className="text-white/90 mb-8 max-w-2xl mx-auto">
-              无论你是想分享知识、寻找答案，还是结识志同道合的朋友，菜菜星球都欢迎你的加入。
-              让我们一起构建一个更加美好的社区！
+              {isAuthenticated 
+                ? '感谢你的陪伴，继续探索菜菜星球的精彩内容，与社区成员一起交流成长！'
+                : '无论你是想分享知识、寻找答案，还是结识志同道合的朋友，菜菜星球都欢迎你的加入。让我们一起构建一个更加美好的社区！'
+              }
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="/register"
-                className="px-8 py-3 bg-white text-planet-purple rounded-full font-semibold hover:shadow-lg transition-shadow"
-              >
-                立即注册
-              </a>
+              {!isAuthenticated && (
+                <a
+                  href="/register"
+                  className="px-8 py-3 bg-white text-planet-purple rounded-full font-semibold hover:shadow-lg transition-shadow"
+                >
+                  立即注册
+                </a>
+              )}
               <a
                 href="/community"
                 className="px-8 py-3 border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors"

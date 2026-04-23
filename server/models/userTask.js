@@ -22,9 +22,9 @@ module.exports = (sequelize, DataTypes) => {
       }
     },
     status: {
-      type: DataTypes.ENUM('accepted', 'completed', 'cancelled'),
+      type: DataTypes.ENUM('accepted', 'completed', 'cancelled', 'failed'),
       defaultValue: 'accepted',
-      comment: '任务状态：accepted-已接受，completed-已完成，cancelled-已取消'
+      comment: '任务状态：accepted-已接受，completed-已完成，cancelled-已取消，failed-任务失败'
     },
     acceptedAt: {
       type: DataTypes.DATE,
@@ -35,6 +35,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
       comment: '完成时间'
+    },
+    failedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '失败时间'
+    },
+    moon_point_request_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: '月球分申请ID'
     }
   }, {
     tableName: 'user_tasks',

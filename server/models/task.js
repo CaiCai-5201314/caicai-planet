@@ -92,10 +92,29 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: true,
       references: {
-        model: 'Users',
+        model: 'users',
         key: 'id'
       },
       comment: '创建者ID'
+    },
+    proposalUserId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      },
+      comment: '提议用户ID（如果是用户提议的任务）'
+    },
+    suggestedTime: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: '建议游玩时间'
+    },
+    items: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: '任务道具（JSON格式存储）'
     }
   }, {
     tableName: 'tasks',
@@ -108,6 +127,10 @@ module.exports = (sequelize, DataTypes) => {
     Task.belongsTo(models.User, {
       foreignKey: 'createdBy',
       as: 'creator'
+    });
+    Task.belongsTo(models.User, {
+      foreignKey: 'proposalUserId',
+      as: 'proposalUser'
     });
     Task.belongsTo(models.TaskType, {
       foreignKey: 'customTypeId',

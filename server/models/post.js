@@ -57,6 +57,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       defaultValue: false
     },
+    pinned_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '置顶时间'
+    },
     status: {
       type: DataTypes.ENUM('draft', 'published', 'hidden', 'pending'),
       allowNull: false,

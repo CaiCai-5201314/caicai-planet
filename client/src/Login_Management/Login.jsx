@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowLeft, FiCheck, FiX, FiCalendar, FiStar } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -11,6 +11,10 @@ export default function Login() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
+  const [checkInResult, setCheckInResult] = useState(null);
+  const [isExpBonusModalOpen, setIsExpBonusModalOpen] = useState(false);
+  const [expBonusResult, setExpBonusResult] = useState(null);
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
@@ -22,7 +26,22 @@ export default function Login() {
     
     if (result.success) {
       toast.success('登录成功！');
-      navigate('/');
+      if (result.checkIn) {
+        if (result.checkIn.success) {
+          // 首次打卡成功，显示弹窗
+          setCheckInResult(result.checkIn);
+          setIsCheckInModalOpen(true);
+        } else {
+          // 已经打卡过，显示toast通知
+          toast.success(result.checkIn.message || '今日已打卡');
+          navigate('/');
+        }
+      } else if (result.expBonus && result.expBonus.success) {
+        setExpBonusResult(result.expBonus);
+        setIsExpBonusModalOpen(true);
+      } else {
+        navigate('/');
+      }
     } else {
       toast.error(result.error || '登录失败');
     }
@@ -140,6 +159,101 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* 打卡弹窗 */}
+      {isCheckInModalOpen && checkInResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              {checkInResult.success ? (
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                  <FiCheck size={40} className="text-green-500" />
+                </div>
+              ) : (
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <FiCalendar size={40} className="text-gray-400" />
+                </div>
+              )}
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                {checkInResult.success ? '打卡成功！' : '今日已打卡'}
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300">
+                {checkInResult.success 
+                  ? '恭喜你完成今天的打卡！' 
+                  : checkInResult.message || '你今天已经打卡过了'}
+              </p>
+            </div>
+            
+            {checkInResult.success && checkInResult.checkIn && (
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-300">打卡时间</span>
+                  <span className="text-gray-900 dark:text-white font-medium">
+                    {new Date(checkInResult.checkIn.check_in_time).toLocaleString('zh-CN')}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            <button 
+              onClick={() => {
+                setIsCheckInModalOpen(false);
+                navigate('/');
+              }}
+              className="w-full py-3 px-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-planet-purple/30 transition-all duration-300"
+            >
+              确定
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 经验值奖励弹窗 */}
+      {isExpBonusModalOpen && expBonusResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center">
+                <FiStar size={40} className="text-yellow-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                登录奖励！
+              </h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                恭喜你获得每日登录奖励
+              </p>
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 rounded-xl p-6 mb-6">
+                <div className="text-5xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">
+                  +10
+                </div>
+                <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                  经验值
+                </div>
+                <div className="mt-4 pt-4 border-t border-yellow-200 dark:border-yellow-800">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500 dark:text-gray-400">变化前</span>
+                    <span className="text-gray-700 dark:text-gray-300">{expBonusResult.exp_before}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-2">
+                    <span className="text-gray-500 dark:text-gray-400">变化后</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{expBonusResult.exp_after}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => {
+                setIsExpBonusModalOpen(false);
+                navigate('/');
+              }}
+              className="w-full py-3 px-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-yellow-500/30 transition-all duration-300"
+            >
+              太棒了！
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

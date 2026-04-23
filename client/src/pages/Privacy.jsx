@@ -23,7 +23,7 @@ export default function Privacy() {
           {/* 标题 */}
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">隐私政策</h1>
-            <p className="text-gray-600">最后更新日期：2026年4月4日</p>
+            <p className="text-gray-600">最后更新日期：2026年4月14日</p>
           </div>
 
           {/* 内容 */}
@@ -49,11 +49,14 @@ export default function Privacy() {
                   <li><strong>注册信息</strong>：用户名、邮箱地址、密码等账号注册所需信息</li>
                   <li><strong>个人资料</strong>：昵称、头像、个人简介等您主动填写的信息</li>
                   <li><strong>使用数据</strong>：您在本平台的浏览记录、操作日志、IP地址、设备信息等</li>
-                  <li><strong>内容数据</strong>：您发布的文章、评论、任务等内容</li>
-                  <li><strong>互动数据</strong>：点赞、收藏、关注等互动行为记录</li>
+                  <li><strong>内容数据</strong>：您发布的文章、评论、任务、任务提议等内容</li>
+                  <li><strong>互动数据</strong>：点赞、收藏、关注、打卡签到等互动行为记录</li>
+                  <li><strong>账户数据</strong>：您的积分、经验值、月球分、等级、权限设置等账户相关数据</li>
+                  <li><strong>任务数据</strong>：您接取、完成的任务记录，任务提议和审核记录等</li>
                 </ul>
                 <p>1.2 我们使用 Cookie 和类似技术来收集您的浏览信息，以改善用户体验。</p>
                 <p>1.3 我们可能从第三方服务（如社交账号登录）获取您授权共享的信息。</p>
+                <p>1.4 如您是主账号管理员，我们还会收集您创建的子账号相关信息及其操作记录。</p>
               </div>
             </section>
 
@@ -73,9 +76,13 @@ export default function Privacy() {
                   <li>向您发送服务通知、安全警报和更新信息</li>
                   <li>个性化推荐内容，改善用户体验</li>
                   <li>进行数据分析和研究，以优化我们的服务</li>
+                  <li>管理您的积分、经验值、月球分、等级等账户数据</li>
+                  <li>处理任务提议、审核、完成和奖励发放</li>
+                  <li>管理打卡签到记录和连续打卡奖励</li>
                   <li>遵守法律法规要求</li>
                 </ul>
-                <p>2.2 我们不会将您的个人信息用于本政策未明确说明的其他用途。</p>
+                <p>2.2 月球分可能会根据系统规则进行定期衰减，我们会记录相关衰减操作，以确保系统公平性。</p>
+                <p>2.3 我们不会将您的个人信息用于本政策未明确说明的其他用途。</p>
               </div>
             </section>
 
@@ -191,15 +198,31 @@ export default function Privacy() {
             {/* 第九条 */}
             <section>
               <div className="flex items-center space-x-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <FiUser className="text-indigo-600" size={20} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">九、子账号与授权</h2>
+              </div>
+              <div className="pl-13 space-y-3 text-gray-700">
+                <p>9.1 如您是主账号管理员，您创建的子账号相关信息将与您的主账号关联存储。</p>
+                <p>9.2 子账号的操作记录将被记录和存储，以确保平台安全和责任追溯。</p>
+                <p>9.3 主账号管理员可以查看和管理其子账号的所有活动和数据。</p>
+                <p>9.4 子账号的数据保护适用本隐私政策的所有条款。</p>
+              </div>
+            </section>
+
+            {/* 第十条 */}
+            <section>
+              <div className="flex items-center space-x-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
                   <FiShield className="text-gray-600" size={20} />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">九、政策更新</h2>
+                <h2 className="text-xl font-bold text-gray-900">十、政策更新</h2>
               </div>
               <div className="pl-13 space-y-3 text-gray-700">
-                <p>9.1 我们可能会不时更新本隐私政策，更新后的政策将在本页面公布。</p>
-                <p>9.2 重大变更时，我们将通过邮件或站内通知的方式告知您。</p>
-                <p>9.3 继续使用本平台服务即表示您同意更新后的隐私政策。</p>
+                <p>10.1 我们可能会不时更新本隐私政策，更新后的政策将在本页面公布。</p>
+                <p>10.2 重大变更时，我们将通过邮件或站内通知的方式告知您。</p>
+                <p>10.3 继续使用本平台服务即表示您同意更新后的隐私政策。</p>
               </div>
             </section>
 
