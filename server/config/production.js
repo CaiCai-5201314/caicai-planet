@@ -2,11 +2,11 @@ require('dotenv').config();
 
 module.exports = {
   database: {
-    host: process.env.PROD_DB_HOST,
+    host: process.env.PROD_DB_HOST || '127.0.0.1',
     port: process.env.PROD_DB_PORT || 3306,
-    username: process.env.PROD_DB_USER,
-    password: process.env.PROD_DB_PASSWORD,
-    database: process.env.PROD_DB_NAME
+    username: process.env.PROD_DB_USER || 'caicai_user',
+    password: process.env.PROD_DB_PASSWORD || 'Kxy040715@qwer',
+    database: process.env.PROD_DB_NAME || 'caicaitask520'
   },
 
   storage: {
@@ -14,8 +14,8 @@ module.exports = {
     qiniu: {
       accessKey: process.env.QINIU_ACCESS_KEY,
       secretKey: process.env.QINIU_SECRET_KEY,
-      bucket: process.env.QINIU_BUCKET || 'caicaimars520',
-      domain: process.env.QINIU_DOMAIN || 'https://img.caicaistack.click'
+      bucket: process.env.QINIU_BUCKET || 'caicairask520',
+      domain: process.env.QINIU_DOMAIN || 'https://img.caicaitask.click'
     }
   },
 

@@ -11,8 +11,9 @@ export const setManualLogout = (value) => {
   isManualLogout = value;
 };
 
+// 使用环境变量作为 baseURL
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   withCredentials: true
 });
 

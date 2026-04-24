@@ -9,7 +9,16 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001
+        PORT: 3002,
+        PROD_DB_HOST: '127.0.0.1',
+        PROD_DB_PORT: 3306,
+        PROD_DB_USER: 'caicai_user',
+        PROD_DB_PASSWORD: 'Kxy040715@qwer',
+        PROD_DB_NAME: 'caicaitask520',
+        QINIU_BUCKET: 'caicairask520',
+        QINIU_DOMAIN: 'https://img.caicaitask.click',
+        JWT_SECRET: 'caicaistack_jwt_secret_key_2026',
+        JWT_EXPIRES_IN: '7d'
       },
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
       error_file: './logs/server-error.log',
@@ -34,7 +43,6 @@ module.exports = {
       out_file: './logs/client-out.log',
       log_file: './logs/client-combined.log',
       time: true,
-      // 防止Vite自动关闭
       min_uptime: '10s',
       max_restarts: 10,
       restart_delay: 3000

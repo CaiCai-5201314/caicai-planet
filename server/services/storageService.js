@@ -128,7 +128,12 @@ class StorageService {
         const token = putPolicy.uploadToken(mac);
         console.log('生成上传令牌成功');
 
-        const formUploader = new qiniu.form_up.FormUploader();
+        // 配置东南亚区域
+        const config = new qiniu.conf.Config();
+        // 东南亚区域
+        config.zone = qiniu.zone.Zone_as0;
+
+        const formUploader = new qiniu.form_up.FormUploader(config);
         const putExtra = new qiniu.form_up.PutExtra();
 
         if (file.path && fs.existsSync(file.path)) {
@@ -209,11 +214,16 @@ class StorageService {
   async deleteFromQiniu(url) {
     // 移除生产环境检查，允许在开发环境下测试
 
-
     const qiniu = require('qiniu');
     const qiniuConfig = this.getQiniuConfig();
     const mac = new qiniu.auth.digest.Mac(qiniuConfig.accessKey, qiniuConfig.secretKey);
-    const bucketManager = new qiniu.rs.BucketManager(mac);
+    
+    // 配置东南亚区域
+    const config = new qiniu.conf.Config();
+    // 东南亚区域
+    config.zone = qiniu.zone.Zone_as0;
+    
+    const bucketManager = new qiniu.rs.BucketManager(mac, config);
 
     const key = url.replace(qiniuConfig.domain + '/', '');
     return new Promise((resolve, reject) => {
