@@ -84,7 +84,7 @@ class StorageService {
     const filePath = path.join(uploadDir, fileName);
 
     if (file.path) {
-      fs.copyFileSync(file.path, filePath);
+      fs.renameSync(file.path, filePath);
     } else {
       const buffer = Buffer.from(file.buffer);
       fs.writeFileSync(filePath, buffer);
