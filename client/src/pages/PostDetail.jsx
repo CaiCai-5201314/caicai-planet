@@ -271,7 +271,11 @@ export default function PostDetail() {
             <div className="p-8">
               <div className="flex items-center space-x-3 mb-6">
                 <img
+<<<<<<< HEAD
                   src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${post.author.avatar}`) : '/moren.png'}
+=======
+                  src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                   alt={post.author?.nickname || post.author?.username}
                   className="w-12 h-12 rounded-full object-cover"
                   onError={(e) => {
@@ -423,7 +427,11 @@ export default function PostDetail() {
                 comments.map((comment) => (
                   <div key={comment.id} className="flex space-x-4">
                     <img
+<<<<<<< HEAD
                       src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? (comment.user.avatar.startsWith('http') ? comment.user.avatar : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${comment.user.avatar}`) : '/moren.png'}
+=======
+                      src={(comment.user?.avatar && comment.user.avatar.length > 0 && comment.user.avatar !== '/uploads/avatars/default.png') ? comment.user.avatar : '/moren.png'}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                       alt={comment.user?.nickname || comment.user?.username}
                       className="w-10 h-10 rounded-full object-cover"
                       onError={(e) => {
@@ -507,7 +515,11 @@ export default function PostDetail() {
                           {comment.replies.map((reply) => (
                             <div key={reply.id} className="flex space-x-3">
                               <img
+<<<<<<< HEAD
                                 src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? (reply.user.avatar.startsWith('http') ? reply.user.avatar : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${reply.user.avatar}`) : '/moren.png'}
+=======
+                                src={(reply.user?.avatar && reply.user.avatar.length > 0 && reply.user.avatar !== '/uploads/avatars/default.png') ? reply.user.avatar : '/moren.png'}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                                 alt={reply.user?.nickname || reply.user?.username}
                                 className="w-8 h-8 rounded-full object-cover"
                                 onError={(e) => {

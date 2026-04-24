@@ -392,6 +392,7 @@ function App() {
             <Notifications />
           </AuthProtected>
         } />
+<<<<<<< HEAD
         <Route path="/lab" element={
           <AuthProtected>
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"><div className="text-planet-purple text-2xl">加载中...</div></div>}>
@@ -399,17 +400,22 @@ function App() {
             </Suspense>
           </AuthProtected>
         } />
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
         <Route path="/post/:id" element={<PostDetail />} />
         <Route path="/create-post" element={
           <AuthProtected>
             <CreatePost />
           </AuthProtected>
         } />
+<<<<<<< HEAD
         <Route path="/edit-post/:id" element={
           <AuthProtected>
             <EditPost />
           </AuthProtected>
         } />
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
         <Route path="/admin-caicai0304/*" element={<AdminDashboard />} />
         <Route path="/short/:shareCode" element={<ShortLinkHandler />} />
         <Route path="/terms" element={<Terms />} />

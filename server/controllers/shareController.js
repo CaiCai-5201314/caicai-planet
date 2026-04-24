@@ -165,9 +165,14 @@ exports.handleShareLinkClick = async (req, res) => {
   try {
     const { shareCode } = req.params;
     
+<<<<<<< HEAD
     // 检查用户登录状态（只有非短链接需要登录）
     const isShortLink = req.path.startsWith('/short/');
     if (!isShortLink && !req.user) {
+=======
+    // 检查用户登录状态
+    if (!req.user) {
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
       return res.status(401).json({
         success: false,
         message: '请先登录再访问外链接'

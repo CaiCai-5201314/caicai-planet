@@ -1,6 +1,18 @@
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
+<<<<<<< HEAD
+=======
+
+// 全局变量，用于跟踪是否是主动退出登录
+let isManualLogout = false;
+let redirectTimer = null;
+
+// 导出函数来设置 isManualLogout 变量
+export const setManualLogout = (value) => {
+  isManualLogout = value;
+};
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 
 // 全局变量，用于跟踪是否是主动退出登录
 let isManualLogout = false;
@@ -13,7 +25,11 @@ export const setManualLogout = (value) => {
 
 // 使用环境变量作为 baseURL
 const api = axios.create({
+<<<<<<< HEAD
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+=======
+  baseURL: '/api',
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
   withCredentials: true
 });
 
