@@ -3,7 +3,10 @@ const { Post, User, Category, Tag, Comment, Like, Favorite, Sequelize } = db;
 const { Op } = Sequelize;
 const { createNotification } = require('./notificationController');
 const { applyMoonPoints } = require('../services/moonPointService');
+<<<<<<< HEAD
 const storageService = require('../services/storageService');
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 
 // 全局浏览记录缓存，用于防重复点击
 const viewRecords = new Map();

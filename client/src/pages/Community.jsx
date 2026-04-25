@@ -110,7 +110,19 @@ export default function Community() {
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<<<<<<< HEAD
 
+=======
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
             <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>
@@ -226,7 +238,11 @@ export default function Community() {
                               </div>
                             )}
                             <img
+<<<<<<< HEAD
                               src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? (post.author.avatar.startsWith('http') ? post.author.avatar : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${post.author.avatar}`) : '/moren.png'}
+=======
+                              src={(post.author?.avatar && post.author.avatar.length > 0 && post.author.avatar !== '/uploads/avatars/default.png') ? post.author.avatar : '/moren.png'}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                               alt={post.author?.nickname || post.author?.username}
                               className="w-10 h-10 rounded-full object-cover"
                               onError={(e) => {
@@ -333,7 +349,11 @@ export default function Community() {
                       className="block"
                     >
                       <img
+<<<<<<< HEAD
                         src={advertisement.image_url.startsWith('http') ? advertisement.image_url : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${advertisement.image_url}`}
+=======
+                        src={advertisement.image_url}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                         alt={advertisement.title}
                         className="w-full h-48 object-cover"
                       />

@@ -380,12 +380,21 @@ export default function TaskDetail() {
 
               {/* 信息网格 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<<<<<<< HEAD
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
                   <div className="flex items-center text-gray-600 dark:text-gray-300 mb-1">
                     <FiAward size={16} className="mr-2 text-purple-500" />
                     <span className="text-sm font-medium">奖励积分</span>
                   </div>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{task.reward}</p>
+=======
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                  <div className="flex items-center text-gray-500 dark:text-gray-400 mb-1">
+                    <FiAward size={16} className="mr-2" />
+                    <span className="text-sm">奖励积分</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">{task.reward}</p>
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                 </div>
                 
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">

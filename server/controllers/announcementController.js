@@ -4,6 +4,7 @@ const Announcement = db.Announcement;
 // 创建公告
 exports.createAnnouncement = async (req, res) => {
   try {
+<<<<<<< HEAD
     console.log('创建公告请求:', req.body);
     console.log('用户信息:', req.user);
     
@@ -14,11 +15,19 @@ exports.createAnnouncement = async (req, res) => {
     }
 
     console.log('准备创建公告:', { title, content, level });
+=======
+    const { title, content, level } = req.body;
+    
+    if (!title || !content) {
+      return res.status(400).json({ message: '标题和内容不能为空' });
+    }
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     
     const announcement = await Announcement.create({
       title,
       content,
       level: level || 'light',
+<<<<<<< HEAD
       status: 'active',
       author_id: req.user?.id || 1
     });
@@ -37,6 +46,19 @@ exports.createAnnouncement = async (req, res) => {
       message: '创建公告失败',
       error: error.message
     });
+=======
+      status: 'active'
+    });
+    
+    res.status(201).json({ 
+      success: true,
+      message: '公告创建成功',
+      data: announcement 
+    });
+  } catch (error) {
+    console.error('创建公告失败:', error);
+    res.status(500).json({ message: '创建公告失败' });
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
   }
 };
 
@@ -47,21 +69,36 @@ exports.getAnnouncements = async (req, res) => {
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
+<<<<<<< HEAD
 
     const where = {};
     if (status) where.status = status;
     if (level) where.level = level;
 
+=======
+    
+    const where = {};
+    if (status) where.status = status;
+    if (level) where.level = level;
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     const { count, rows } = await Announcement.findAndCountAll({
       where,
       order: [['created_at', 'DESC']],
       limit: limitNum,
       offset
     });
+<<<<<<< HEAD
 
     const totalPages = Math.ceil(count / limitNum);
 
     res.status(200).json({
+=======
+    
+    const totalPages = Math.ceil(count / limitNum);
+    
+    res.status(200).json({ 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
       success: true,
       announcements: rows,
       pagination: {
@@ -81,15 +118,26 @@ exports.getAnnouncements = async (req, res) => {
 exports.getAnnouncement = async (req, res) => {
   try {
     const { id } = req.params;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     const announcement = await Announcement.findByPk(id);
     if (!announcement) {
       return res.status(404).json({ message: '公告不存在' });
     }
+<<<<<<< HEAD
 
     res.status(200).json({
       success: true,
       data: announcement
+=======
+    
+    res.status(200).json({ 
+      success: true,
+      data: announcement 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     });
   } catch (error) {
     console.error('获取公告失败:', error);
@@ -102,12 +150,20 @@ exports.updateAnnouncement = async (req, res) => {
   try {
     const { id } = req.params;
     const { title, content, level, status } = req.body;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     const announcement = await Announcement.findByPk(id);
     if (!announcement) {
       return res.status(404).json({ message: '公告不存在' });
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     await announcement.update({
       title: title || announcement.title,
       content: content || announcement.content,
@@ -115,11 +171,19 @@ exports.updateAnnouncement = async (req, res) => {
       status: status || announcement.status,
       updated_at: new Date()
     });
+<<<<<<< HEAD
 
     res.status(200).json({
       success: true,
       message: '公告更新成功',
       data: announcement
+=======
+    
+    res.status(200).json({ 
+      success: true,
+      message: '公告更新成功',
+      data: announcement 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     });
   } catch (error) {
     console.error('更新公告失败:', error);
@@ -131,17 +195,30 @@ exports.updateAnnouncement = async (req, res) => {
 exports.deleteAnnouncement = async (req, res) => {
   try {
     const { id } = req.params;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     const announcement = await Announcement.findByPk(id);
     if (!announcement) {
       return res.status(404).json({ message: '公告不存在' });
     }
+<<<<<<< HEAD
 
     await announcement.destroy();
 
     res.status(200).json({
       success: true,
       message: '公告删除成功'
+=======
+    
+    await announcement.destroy();
+    
+    res.status(200).json({ 
+      success: true,
+      message: '公告删除成功' 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     });
   } catch (error) {
     console.error('删除公告失败:', error);
@@ -153,12 +230,17 @@ exports.deleteAnnouncement = async (req, res) => {
 exports.getActiveAnnouncements = async (req, res) => {
   try {
     const userId = req.user?.id;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 获取所有活跃公告
     const allAnnouncements = await Announcement.findAll({
       where: { status: 'active' },
       order: [['created_at', 'DESC']]
     });
+<<<<<<< HEAD
 
     if (!userId) {
       // 未登录用户不返回任何公告
@@ -168,23 +250,47 @@ exports.getActiveAnnouncements = async (req, res) => {
       });
     }
 
+=======
+    
+    if (!userId) {
+      // 未登录用户不返回任何公告
+      return res.status(200).json({ 
+        success: true,
+        data: [] 
+      });
+    }
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 获取用户已读的公告ID
     const readAnnouncements = await db.AnnouncementRead.findAll({
       where: { user_id: userId },
       attributes: ['announcement_id']
     });
+<<<<<<< HEAD
 
     const readIds = readAnnouncements.map(item => item.announcement_id);
 
+=======
+    
+    const readIds = readAnnouncements.map(item => item.announcement_id);
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 为每个公告添加已读状态
     const announcementsWithReadStatus = allAnnouncements.map(ann => ({
       ...ann.toJSON(),
       is_read: readIds.includes(ann.id)
     }));
+<<<<<<< HEAD
 
     res.status(200).json({
       success: true,
       data: announcementsWithReadStatus
+=======
+    
+    res.status(200).json({ 
+      success: true,
+      data: announcementsWithReadStatus 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     });
   } catch (error) {
     console.error('获取活跃公告失败:', error);
@@ -197,30 +303,53 @@ exports.markAsRead = async (req, res) => {
   try {
     const userId = req.user?.id;
     const { announcementId } = req.body;
+<<<<<<< HEAD
 
     if (!userId || !announcementId) {
       return res.status(400).json({ message: '缺少必要参数' });
     }
 
+=======
+    
+    if (!userId || !announcementId) {
+      return res.status(400).json({ message: '缺少必要参数' });
+    }
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 检查公告是否存在
     const announcement = await Announcement.findByPk(announcementId);
     if (!announcement) {
       return res.status(404).json({ message: '公告不存在' });
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 标记为已读（使用upsert避免重复）
     await db.AnnouncementRead.upsert({
       user_id: userId,
       announcement_id: announcementId,
       read_at: new Date()
     });
+<<<<<<< HEAD
 
     res.status(200).json({
       success: true,
       message: '公告已标记为已读'
+=======
+    
+    res.status(200).json({ 
+      success: true,
+      message: '公告已标记为已读' 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     });
   } catch (error) {
     console.error('标记公告已读失败:', error);
     res.status(500).json({ message: '标记公告已读失败' });
   }
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222

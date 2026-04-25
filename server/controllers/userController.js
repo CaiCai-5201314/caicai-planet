@@ -165,6 +165,7 @@ const userController = {
         return res.status(400).json({ message: '请上传图片' });
       }
 
+<<<<<<< HEAD
       let avatarUrl = null;
       try {
         avatarUrl = await storageService.upload(req.file, 'avatars');
@@ -173,6 +174,9 @@ const userController = {
         return res.status(500).json({ message: '上传文件失败' });
       }
       
+=======
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
       console.log('Avatar URL:', avatarUrl);
       console.log('Updating user:', req.user.id);
       
@@ -201,6 +205,7 @@ const userController = {
         return res.status(400).json({ message: '请上传图片' });
       }
 
+<<<<<<< HEAD
       let coverUrl = null;
       try {
         coverUrl = await storageService.upload(req.file, 'covers');
@@ -209,6 +214,9 @@ const userController = {
         return res.status(500).json({ message: '上传文件失败' });
       }
       
+=======
+      const coverUrl = `/uploads/covers/${req.file.filename}`;
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
       console.log('Cover URL:', coverUrl);
       console.log('Updating user:', req.user.id);
       

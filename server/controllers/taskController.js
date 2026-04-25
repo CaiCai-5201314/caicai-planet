@@ -539,7 +539,11 @@ exports.approveTaskProposal = async (req, res) => {
         status: 'published',
         createdBy: adminId,
         proposalUserId: proposal.userId, // 保存提议用户的ID
+<<<<<<< HEAD
         reward: reward,
+=======
+        reward: 10,
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
         suggestedTime: proposal.suggestedTime,
         items: proposal.items
       });

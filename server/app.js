@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 
+<<<<<<< HEAD
 const env = process.env.NODE_ENV || 'development';
 const config = require('./config');
 const storageService = require('./services/storageService');
@@ -19,6 +20,8 @@ if (config.storage.type === 'qiniu' && env === 'production') {
   console.log(`七牛云域名: ${config.storage.qiniu.domain}`);
 }
 console.log('========================================');
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -67,10 +70,17 @@ const globalLimiter = rateLimit({
   // 配置keyGenerator以正确处理代理
   keyGenerator: (req) => {
     // 从X-Forwarded-For头获取真实IP
+<<<<<<< HEAD
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
               req.ip ||
               req.connection?.remoteAddress ||
               req.socket?.remoteAddress ||
+=======
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+              req.ip || 
+              req.connection?.remoteAddress || 
+              req.socket?.remoteAddress || 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
               'unknown';
     return ip;
   }
@@ -85,10 +95,17 @@ const authLimiter = rateLimit({
   // 配置keyGenerator以正确处理代理
   keyGenerator: (req) => {
     // 从X-Forwarded-For头获取真实IP
+<<<<<<< HEAD
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
               req.ip ||
               req.connection?.remoteAddress ||
               req.socket?.remoteAddress ||
+=======
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+              req.ip || 
+              req.connection?.remoteAddress || 
+              req.socket?.remoteAddress || 
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
               'unknown';
     return ip;
   }
@@ -105,7 +122,11 @@ const authLimiter = rateLimit({
 //    },
 //  },
 //  crossOriginEmbedderPolicy: false,
+<<<<<<< HEAD
 //  hsts:false,
+=======
+//  hstS:false,
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 //}));
 
 // 应用全局限制
@@ -189,12 +210,18 @@ const { auth } = require('./middleware/auth');
 
 // 外链接路由
 app.get('/share/friend-link/:shareCode', auth, shareController.handleShareLinkClick);
+<<<<<<< HEAD
 // 短链接路由（公开访问，不需要认证）
 app.get('/short/:shareCode', shareController.handleShareLinkClick);
+=======
+// 短链接路由
+app.get('/short/:shareCode', auth, shareController.handleShareLinkClick);
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 app.post('/api/share/friend-link/verify', shareController.verifyShareLink);
 
 // 授权中心路由
 app.use('/api/authorization', authorizationRoutes);
+<<<<<<< HEAD
 
 // 实验室路由
 console.log('Loading lab routes...');
@@ -250,9 +277,205 @@ app.post('/api/error/log', async (req, res) => {
     });
   }
 });
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 测试路由：直接测试月球分申请功能
+const { applyMoonPoints } = require('./services/moonPointService');
+app.get('/api/test-moon-point', async (req, res) => {
+  console.log('[测试路由] 接收到测试请求');
+  try {
+    // 使用一个测试用户ID（假设您的用户ID是11）
+    const testUserId = 11;
+    console.log('[测试路由] 调用applyMoonPoints, 用户ID:', testUserId);
+    
+    const result = await applyMoonPoints(testUserId, 'create_post', 99999);
+    console.log('[测试路由] 成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：手动测试月球分衰减
+const { decayAllUsersMoonPoints } = require('./services/moonPointDecayService');
+app.get('/api/test-moon-point-decay', async (req, res) => {
+  console.log('[测试路由] 接收到月球分衰减测试请求');
+  try {
+    const result = await decayAllUsersMoonPoints();
+    console.log('[测试路由] 月球分衰减测试成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '月球分衰减测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 月球分衰减测试失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '月球分衰减测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：测试每日任务限制
+const { canAcceptTask, getTodayAcceptedTaskCount, calculateUserLevel, getDailyTaskLimit } = require('./services/taskLimitService');
+app.get('/api/test-task-limit/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到任务限制测试请求');
+  try {
+    const { userId } = req.params;
+    const { User } = require('./models');
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    
+    const level = await calculateUserLevel(user.exp);
+    const limit = getDailyTaskLimit(level);
+    const currentCount = await getTodayAcceptedTaskCount(parseInt(userId));
+    const canAccept = currentCount < limit;
+    
+    const result = {
+      userId: parseInt(userId),
+      username: user.username,
+      exp: user.exp,
+      level,
+      limit,
+      currentCount,
+      canAccept,
+      remaining: limit - currentCount
+    };
+    
+    console.log('[测试路由] 任务限制测试成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '任务限制测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务限制测试失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务限制测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：重置用户今日任务接取记录（方便测试）
+app.post('/api/test-reset-task-limit/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到重置任务限制请求');
+  try {
+    const { userId } = req.params;
+    const { UserDailyTaskAccept } = require('./models');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const deletedCount = await UserDailyTaskAccept.destroy({
+      where: {
+        user_id: parseInt(userId),
+        date: today
+      }
+    });
+    
+    console.log('[测试路由] 任务限制重置成功，删除记录数:', deletedCount);
+    
+    res.json({ 
+      success: true, 
+      message: '任务限制重置成功', 
+      deletedCount: deletedCount 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务限制重置失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务限制重置失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：同步用户今日已接取的任务到记录表
+app.post('/api/test-sync-tasks/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到同步任务请求');
+  try {
+    const { userId } = req.params;
+    const { UserTask, UserDailyTaskAccept } = require('./models');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 查询用户今天接取的所有任务
+    const userTasks = await UserTask.findAll({
+      where: {
+        user_id: parseInt(userId),
+        status: ['accepted', 'completed', 'cancelled', 'failed']
+      }
+    });
+    
+    // 筛选出今天接取的任务
+    const todayTasks = userTasks.filter(task => {
+      if (!task.acceptedAt) return false;
+      const acceptedDate = new Date(task.acceptedAt);
+      acceptedDate.setHours(0, 0, 0, 0);
+      return acceptedDate.getTime() === today.getTime();
+    });
+    
+    console.log('[测试路由] 找到今日任务数:', todayTasks.length);
+    
+    // 同步到记录表
+    let syncedCount = 0;
+    for (const userTask of todayTasks) {
+      try {
+        await UserDailyTaskAccept.create({
+          user_id: parseInt(userId),
+          task_id: userTask.task_id,
+          date: today
+        });
+        syncedCount++;
+      } catch (error) {
+        // 忽略重复记录错误
+        if (error.name !== 'SequelizeUniqueConstraintError') {
+          console.error('[测试路由] 同步任务失败:', error);
+        }
+      }
+    }
+    
+    console.log('[测试路由] 同步成功，数量:', syncedCount);
+    
+    res.json({ 
+      success: true, 
+      message: '任务同步成功', 
+      totalTodayTasks: todayTasks.length,
+      syncedCount: syncedCount 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务同步失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务同步失败', 
+      error: error.message 
+    });
+  }
 });
 
 // API 404 处理
@@ -280,7 +503,11 @@ const startServer = async () => {
 
     // 暂时禁用alter同步，避免索引数量超过限制
     await db.sequelize.sync({});
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 手动添加所需字段
     try {
       await db.sequelize.query("ALTER TABLE users ADD COLUMN is_sub_account TINYINT(1) NOT NULL DEFAULT 0");
@@ -393,7 +620,11 @@ const startServer = async () => {
     } catch (error) {
       console.log('moon_points_bonus字段已存在');
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 为用户表添加月球分中心字段
     try {
       await db.sequelize.query("ALTER TABLE users ADD COLUMN moon_center_id INT");
@@ -516,6 +747,7 @@ const startServer = async () => {
     } catch (error) {
       console.log('moon_point_logs reason_type字段已修改');
     }
+<<<<<<< HEAD
     // 修改announcements表的content字段类型为LONGTEXT
     try {
       await db.sequelize.query("ALTER TABLE announcements MODIFY COLUMN content LONGTEXT NOT NULL");
@@ -523,6 +755,9 @@ const startServer = async () => {
       console.log('announcements content字段已修改为LONGTEXT');
     }
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 修改月球分相关字段为DECIMAL(10,1)类型
     try {
       await db.sequelize.query("ALTER TABLE users MODIFY COLUMN moon_points DECIMAL(10,1) NOT NULL DEFAULT 0");
@@ -544,7 +779,11 @@ const startServer = async () => {
     } catch (error) {
       console.log('moon_point_rules base_points字段已修改或已存在');
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 添加任务相关字段
     try {
       await db.sequelize.query("ALTER TABLE users ADD COLUMN task_ban_end_time DATETIME");
@@ -582,7 +821,11 @@ const startServer = async () => {
     } catch (error) {
       console.log('user_daily_task_accepts表已存在');
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 修改user_tasks表，添加新字段
     try {
       await db.sequelize.query("ALTER TABLE user_tasks MODIFY COLUMN status ENUM('accepted', 'completed', 'cancelled', 'failed') NOT NULL DEFAULT 'accepted'");
@@ -599,7 +842,11 @@ const startServer = async () => {
     } catch (error) {
       console.log('moon_point_request_id字段已存在');
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     console.log('数据库模型同步完成');
 
     // 自动初始化默认月球分规则
@@ -719,22 +966,35 @@ const startServer = async () => {
 
     console.log('正在启动服务器...');
     console.log(`尝试在端口 ${PORT} 上监听...`);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 监听未捕获的异常
     process.on('uncaughtException', (error) => {
       console.error('未捕获的异常:', error);
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 监听未处理的Promise拒绝
     process.on('unhandledRejection', (reason, promise) => {
       console.error('未处理的Promise拒绝:', reason);
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`服务器成功启动，运行在端口 ${PORT}`);
       console.log(`服务器地址: http://localhost:${PORT}`);
       console.log(`服务器地址: http://127.0.0.1:${PORT}`);
       console.log('服务器启动完成，等待请求...');
+<<<<<<< HEAD
 
       // 初始化常见问题
       const initializeQA = async () => {
@@ -777,6 +1037,9 @@ const startServer = async () => {
       // 执行初始化
       initializeQA();
 
+=======
+      
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
       // 测试服务器是否正常响应
       const http = require('http');
       const options = {
@@ -806,12 +1069,20 @@ const startServer = async () => {
       console.error('服务器启动错误:', error);
       process.exit(1);
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 监听服务器关闭事件
     server.on('close', () => {
       console.log('服务器已关闭');
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 监听连接事件
     server.on('connection', (socket) => {
       console.log('新的连接:', socket.remoteAddress, socket.remotePort);
@@ -822,7 +1093,11 @@ const startServer = async () => {
         console.error('连接错误:', error);
       });
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     // 监听进程终止事件
     process.on('SIGINT', () => {
       console.log('收到终止信号，正在关闭服务器...');
@@ -831,7 +1106,11 @@ const startServer = async () => {
         process.exit(0);
       });
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
     process.on('SIGTERM', () => {
       console.log('收到终止信号，正在关闭服务器...');
       server.close(() => {

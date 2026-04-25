@@ -816,6 +816,7 @@ export default function TaskCenterManagement() {
         
         {/* 奖励积分 */}
         <div>
+<<<<<<< HEAD
           <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分（根据难度自动计算，可手动调整）</label>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-purple-600">{formData.reward}</span>
@@ -824,6 +825,16 @@ export default function TaskCenterManagement() {
           <p className="text-xs text-gray-500 mt-1">
             简单任务2积分，中等任务3积分，困难任务5积分
           </p>
+=======
+          <label className="block text-sm font-medium text-gray-700 mb-1">奖励积分</label>
+          <input
+            type="number"
+            value={formData.reward}
+            onChange={(e) => setFormData({ ...formData, reward: parseInt(e.target.value) || 0 })}
+            placeholder="0"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+          />
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
         </div>
         
         {/* 提议用户和过期时间 */}

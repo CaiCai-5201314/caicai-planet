@@ -269,9 +269,12 @@ const authController = {
           }
           const userAgent = req.get('user-agent');
 
+<<<<<<< HEAD
           // 获得10点经验值
           const expEarned = 10;
           
+=======
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
           // 创建打卡记录
           const checkIn = await CheckIn.create({
             user_id: user.id,
@@ -279,12 +282,17 @@ const authController = {
             check_in_time: new Date(),
             status: 'success',
             ip_address: ipAddress,
+<<<<<<< HEAD
             user_agent: userAgent,
             exp_earned: expEarned
           });
           
           // 更新用户经验值
           await user.update({ exp: (user.exp || 0) + expEarned });
+=======
+            user_agent: userAgent
+          });
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
 
           // 集成月球分规则系统 - 申请/发放月球分
           let moonPointResult = null;

@@ -5,7 +5,11 @@ const { recordEmailResult } = require('../utils/emailMonitor');
 
 // 调试：打印邮件配置
 logger.info('邮件配置加载:', {
+<<<<<<< HEAD
   email163: process.env.EMAIL_163_USER,
+=======
+  email163: process.env.EMAIL_USER,
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
   emailQQ: process.env.EMAIL_QQ_USER
 });
 

@@ -249,9 +249,15 @@ export default function AdvertisementManagement() {
                   {ad.image_url && (
                     <div className="lg:w-48 flex-shrink-0">
                       <img
+<<<<<<< HEAD
                         src={ad.image_url.startsWith('http') ? ad.image_url : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${ad.image_url}`}
                         alt={ad.title}
                         className="w-full h-48 object-cover rounded-lg"
+=======
+                        src={ad.image_url}
+                        alt={ad.title}
+                        className="w-full h-32 object-cover rounded-xl"
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                       />
                     </div>
                   )}
@@ -384,7 +390,11 @@ export default function AdvertisementManagement() {
                       <div className="flex items-center gap-3">
                         <div className="flex-shrink-0">
                           <img
+<<<<<<< HEAD
                             src={formData.image_url.startsWith('http') ? formData.image_url : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${formData.image_url}`}
+=======
+                            src={formData.image_url}
+>>>>>>> 238d9711fa98027fb9fb6da53c618c645b242222
                             alt="广告图片"
                             className="w-24 h-16 object-cover rounded-lg"
                           />
