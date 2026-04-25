@@ -178,7 +178,7 @@ export default function EditPost() {
                   {coverImageUrl && (
                     <div className="relative w-32 h-32">
                       <img
-                        src={coverImageUrl.startsWith('http') ? coverImageUrl : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${coverImageUrl}`}
+                        src={coverImageUrl.startsWith('http') ? coverImageUrl : `${(import.meta.env.VITE_API_BASE_URL || '').replace('/api', '')}${coverImageUrl}`}
                         alt="封面图片"
                         className="w-full h-full object-cover rounded-lg"
                       />

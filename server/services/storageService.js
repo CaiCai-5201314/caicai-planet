@@ -172,6 +172,12 @@ class StorageService {
         const formUploader = new qiniu.form_up.FormUploader(config);
         const putExtra = new qiniu.form_up.PutExtra();
 
+        // 处理文件路径
+        const absolutePath = file.path && !path.isAbsolute(file.path) ? path.resolve(__dirname, "../../", file.path) : file.path;
+        if (absolutePath && fs.existsSync(absolutePath)) {
+          file.path = absolutePath;
+        }
+
         // 压缩图片
         let compressedBuffer = null;
         try {

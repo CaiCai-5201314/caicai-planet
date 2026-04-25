@@ -245,7 +245,7 @@ export default function Tasks() {
           </div>
           
           {/* 提议任务按钮和我的月球分 - 右上角 */}
-        <div className="flex justify-end mb-6 space-x-4">
+          <div className="flex justify-end mb-6 space-x-4">
           {/* 我的月球分模块 */}
           <button
             onClick={openMoonPointsModal}

@@ -306,7 +306,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/admin-caicai0304/login" element={<AdminLogin />} />
         <Route path="/community" element={<Community />} />
-        <Route path="/friends" element={<Friends />} />
+        <Route path="/friend-links" element={<Friends />} />
         <Route path="/about" element={<About />} />
         <Route path="/secret" element={<Secret />} />
         <Route path="/tasks" element={
