@@ -12,7 +12,7 @@ import remarkGfm from 'remark-gfm';
 const baseNavItems = [
   { label: '首页', path: '/' },
   { label: '社区', path: '/community' },
-  { label: '友链', path: '/friends' },
+  { label: '友链', path: '/friend-links' },
 ];
 
 const authNavItems = [

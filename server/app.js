@@ -187,11 +187,10 @@ app.use('/r', shortLinkRoutes);
 // 导入认证中间件
 const { auth } = require('./middleware/auth');
 
-// 外链接路由（公开访问，不需要认证）
-app.get('/share/friend-link/:shareCode', shareController.handleShareLinkClick);
-// 短链接路由（公开访问，不需要认证）
-app.get('/short/:shareCode', shareController.handleShareLinkClick);
-app.post('/api/share/friend-link/verify', shareController.verifyShareLink);
+// 外链接路由（需要认证）
+app.get('/share/friend-link/:shareCode', auth, shareController.handleShareLinkClick);
+// 短链接路由由前端处理
+app.post('/api/share/friend-link/verify', auth, shareController.verifyShareLink);
 
 // 授权中心路由
 app.use('/api/authorization', authorizationRoutes);
