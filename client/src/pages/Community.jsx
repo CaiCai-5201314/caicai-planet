@@ -110,7 +110,15 @@ export default function Community() {
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
+          <div className="flex items-center space-x-4 mb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
             <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>

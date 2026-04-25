@@ -187,8 +187,8 @@ app.use('/r', shortLinkRoutes);
 // 导入认证中间件
 const { auth } = require('./middleware/auth');
 
-// 外链接路由
-app.get('/share/friend-link/:shareCode', auth, shareController.handleShareLinkClick);
+// 外链接路由（公开访问，不需要认证）
+app.get('/share/friend-link/:shareCode', shareController.handleShareLinkClick);
 // 短链接路由（公开访问，不需要认证）
 app.get('/short/:shareCode', shareController.handleShareLinkClick);
 app.post('/api/share/friend-link/verify', shareController.verifyShareLink);
@@ -253,6 +253,200 @@ app.post('/api/error/log', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 测试路由：直接测试月球分申请功能
+const { applyMoonPoints } = require('./services/moonPointService');
+app.get('/api/test-moon-point', async (req, res) => {
+  console.log('[测试路由] 接收到测试请求');
+  try {
+    // 使用一个测试用户ID（假设您的用户ID是11）
+    const testUserId = 11;
+    console.log('[测试路由] 调用applyMoonPoints, 用户ID:', testUserId);
+    
+    const result = await applyMoonPoints(testUserId, 'create_post', 99999);
+    console.log('[测试路由] 成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：手动测试月球分衰减
+const { decayAllUsersMoonPoints } = require('./services/moonPointDecayService');
+app.get('/api/test-moon-point-decay', async (req, res) => {
+  console.log('[测试路由] 接收到月球分衰减测试请求');
+  try {
+    const result = await decayAllUsersMoonPoints();
+    console.log('[测试路由] 月球分衰减测试成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '月球分衰减测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 月球分衰减测试失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '月球分衰减测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：测试每日任务限制
+const { canAcceptTask, getTodayAcceptedTaskCount, calculateUserLevel, getDailyTaskLimit } = require('./services/taskLimitService');
+app.get('/api/test-task-limit/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到任务限制测试请求');
+  try {
+    const { userId } = req.params;
+    const { User } = require('./models');
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: '用户不存在' });
+    }
+    
+    const level = await calculateUserLevel(user.exp);
+    const limit = getDailyTaskLimit(level);
+    const currentCount = await getTodayAcceptedTaskCount(parseInt(userId));
+    const canAccept = currentCount < limit;
+    
+    const result = {
+      userId: parseInt(userId),
+      username: user.username,
+      exp: user.exp,
+      level,
+      limit,
+      currentCount,
+      canAccept,
+      remaining: limit - currentCount
+    };
+    
+    console.log('[测试路由] 任务限制测试成功:', result);
+    
+    res.json({ 
+      success: true, 
+      message: '任务限制测试成功', 
+      result: result 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务限制测试失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务限制测试失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：重置用户今日任务接取记录（方便测试）
+app.post('/api/test-reset-task-limit/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到重置任务限制请求');
+  try {
+    const { userId } = req.params;
+    const { UserDailyTaskAccept } = require('./models');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const deletedCount = await UserDailyTaskAccept.destroy({
+      where: {
+        user_id: parseInt(userId),
+        date: today
+      }
+    });
+    
+    console.log('[测试路由] 任务限制重置成功，删除记录数:', deletedCount);
+    
+    res.json({ 
+      success: true, 
+      message: '任务限制重置成功', 
+      deletedCount: deletedCount 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务限制重置失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务限制重置失败', 
+      error: error.message 
+    });
+  }
+});
+
+// 测试路由：同步用户今日已接取的任务到记录表
+app.post('/api/test-sync-tasks/:userId', async (req, res) => {
+  console.log('[测试路由] 接收到同步任务请求');
+  try {
+    const { userId } = req.params;
+    const { UserTask, UserDailyTaskAccept } = require('./models');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // 查询用户今天接取的所有任务
+    const userTasks = await UserTask.findAll({
+      where: {
+        user_id: parseInt(userId),
+        status: ['accepted', 'completed', 'cancelled', 'failed']
+      }
+    });
+    
+    // 筛选出今天接取的任务
+    const todayTasks = userTasks.filter(task => {
+      if (!task.acceptedAt) return false;
+      const acceptedDate = new Date(task.acceptedAt);
+      acceptedDate.setHours(0, 0, 0, 0);
+      return acceptedDate.getTime() === today.getTime();
+    });
+    
+    console.log('[测试路由] 找到今日任务数:', todayTasks.length);
+    
+    // 同步到记录表
+    let syncedCount = 0;
+    for (const userTask of todayTasks) {
+      try {
+        await UserDailyTaskAccept.create({
+          user_id: parseInt(userId),
+          task_id: userTask.task_id,
+          date: today
+        });
+        syncedCount++;
+      } catch (error) {
+        // 忽略重复记录错误
+        if (error.name !== 'SequelizeUniqueConstraintError') {
+          console.error('[测试路由] 同步任务失败:', error);
+        }
+      }
+    }
+    
+    console.log('[测试路由] 同步成功，数量:', syncedCount);
+    
+    res.json({ 
+      success: true, 
+      message: '任务同步成功', 
+      totalTodayTasks: todayTasks.length,
+      syncedCount: syncedCount 
+    });
+  } catch (error) {
+    console.error('[测试路由] 任务同步失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: '任务同步失败', 
+      error: error.message 
+    });
+  }
 });
 
 // API 404 处理

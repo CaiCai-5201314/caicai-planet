@@ -15,6 +15,8 @@ module.exports = {
         PROD_DB_USER: 'caicai_user',
         PROD_DB_PASSWORD: 'Kxy040715@qwer',
         PROD_DB_NAME: 'caicaitask520',
+        QINIU_ACCESS_KEY: 'Re3CnnattXF_9GpZWGOBPuPypvhpHyOvy7kMArO6',
+        QINIU_SECRET_KEY: '-yuyMU_LJtdfFTG9uscqej8Z-0MhS7J5x4ZzRc71',
         QINIU_BUCKET: 'caicairask520',
         QINIU_DOMAIN: 'https://img.caicaitask.click',
         JWT_SECRET: 'caicaistack_jwt_secret_key_2026',

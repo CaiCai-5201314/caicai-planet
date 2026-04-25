@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiSave, FiSettings, FiPlus, FiTrash2, FiEdit } from 'react-icons/fi';
+import { FiSave, FiSettings, FiPlus, FiTrash2, FiEdit, FiUpload } from 'react-icons/fi';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -29,11 +29,16 @@ function SiteConfig() {
     footerShowSocial: 'true',
     footerShowContact: 'true',
     footerShowCopyright: 'true',
+    footerShowAppreciation: 'true',
+    footerAppreciationTitle: '支持我们',
+    footerAppreciationImage: '',
+    footerAppreciationDescription: '如果您喜欢我们的内容，欢迎打赏支持',
     footerLayout: 'grid'
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editingLink, setEditingLink] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [editingSocial, setEditingSocial] = useState(null);
 
   // 加载配置
@@ -67,6 +72,10 @@ function SiteConfig() {
           footerShowSocial: response.data.configs.footerShowSocial || configs.footerShowSocial,
           footerShowContact: response.data.configs.footerShowContact || configs.footerShowContact,
           footerShowCopyright: response.data.configs.footerShowCopyright || configs.footerShowCopyright,
+          footerShowAppreciation: response.data.configs.footerShowAppreciation || configs.footerShowAppreciation,
+          footerAppreciationTitle: response.data.configs.footerAppreciationTitle || configs.footerAppreciationTitle,
+          footerAppreciationImage: response.data.configs.footerAppreciationImage || configs.footerAppreciationImage,
+          footerAppreciationDescription: response.data.configs.footerAppreciationDescription || configs.footerAppreciationDescription,
           footerLayout: response.data.configs.footerLayout || configs.footerLayout
         };
         setConfigs(loadedConfigs);
@@ -99,6 +108,10 @@ function SiteConfig() {
         { key: 'footerShowSocial', value: configs.footerShowSocial, description: '是否显示社交链接' },
         { key: 'footerShowContact', value: configs.footerShowContact, description: '是否显示联系我们' },
         { key: 'footerShowCopyright', value: configs.footerShowCopyright, description: '是否显示版权信息' },
+        { key: 'footerShowAppreciation', value: configs.footerShowAppreciation, description: '是否显示赞赏码' },
+        { key: 'footerAppreciationTitle', value: configs.footerAppreciationTitle, description: '赞赏码标题' },
+        { key: 'footerAppreciationImage', value: configs.footerAppreciationImage, description: '赞赏码图片URL' },
+        { key: 'footerAppreciationDescription', value: configs.footerAppreciationDescription, description: '赞赏码描述' },
         { key: 'footerLayout', value: configs.footerLayout, description: '页尾布局方式' }
       ];
 
@@ -119,6 +132,29 @@ function SiteConfig() {
       ...prev,
       [key]: value
     }));
+  };
+
+  // 处理赞赏码图片上传
+  const handleAppreciationImageUpload = async (file) => {
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post('/upload/appreciation', formData);
+      
+      setConfigs(prev => ({
+        ...prev,
+        footerAppreciationImage: response.data.url
+      }));
+      
+      toast.success('赞赏码图片上传成功');
+    } catch (error) {
+      console.error('上传赞赏码图片失败:', error);
+      toast.error('上传赞赏码图片失败');
+    } finally {
+      setUploading(false);
+    }
   };
 
   // 添加导航链接
@@ -454,6 +490,80 @@ function SiteConfig() {
             />
           </div>
 
+          {/* 赞赏码 */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">赞赏码配置</h3>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  赞赏码标题
+                </label>
+                <input
+                  type="text"
+                  value={configs.footerAppreciationTitle}
+                  onChange={(e) => handleInputChange('footerAppreciationTitle', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  placeholder="请输入赞赏码标题"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  赞赏码图片URL
+                </label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={configs.footerAppreciationImage}
+                    onChange={(e) => handleInputChange('footerAppreciationImage', e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                    placeholder="请输入赞赏码图片URL"
+                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          handleAppreciationImageUpload(file);
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={uploading}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      className="flex items-center space-x-2 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      {uploading ? (
+                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-planet-purple" />
+                      ) : (
+                        <FiUpload size={18} />
+                      )}
+                      <span>上传</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  赞赏码描述
+                </label>
+                <textarea
+                  value={configs.footerAppreciationDescription}
+                  onChange={(e) => handleInputChange('footerAppreciationDescription', e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  placeholder="请输入赞赏码描述"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* 样式配置 */}
           <div className="border-t border-gray-200 pt-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">样式配置</h3>
@@ -557,7 +667,8 @@ function SiteConfig() {
                   { key: 'footerShowNavigation', label: '显示导航' },
                   { key: 'footerShowSocial', label: '显示社交链接' },
                   { key: 'footerShowContact', label: '显示联系我们' },
-                  { key: 'footerShowCopyright', label: '显示版权信息' }
+                  { key: 'footerShowCopyright', label: '显示版权信息' },
+                  { key: 'footerShowAppreciation', label: '显示赞赏码' }
                 ].map((item) => (
                   <label key={item.key} className="flex items-center space-x-2 cursor-pointer">
                     <input

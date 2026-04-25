@@ -233,7 +233,16 @@ export default function Tasks() {
       {/* 主内容 */}
       <div className="relative z-10 pt-24 pb-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
-
+          {/* 返回按钮 */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            >
+              <FiArrowLeft size={20} />
+              <span>返回</span>
+            </button>
+          </div>
           
           {/* 提议任务按钮和我的月球分 - 右上角 */}
         <div className="flex justify-end mb-6 space-x-4">

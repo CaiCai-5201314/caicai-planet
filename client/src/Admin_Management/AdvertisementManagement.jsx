@@ -252,6 +252,7 @@ export default function AdvertisementManagement() {
                         src={ad.image_url.startsWith('http') ? ad.image_url : `${import.meta.env.VITE_API_BASE_URL.replace('/api', '')}${ad.image_url}`}
                         alt={ad.title}
                         className="w-full h-48 object-cover rounded-lg"
+
                       />
                     </div>
                   )}
