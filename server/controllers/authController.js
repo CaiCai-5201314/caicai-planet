@@ -498,7 +498,7 @@ const authController = {
   // 更新邮箱
   updateEmail: async (req, res) => {
     try {
-      const { email, verificationCode } = req.body;
+      let { email, verificationCode } = req.body;
       const userId = req.user.id;
 
       const user = await User.findByPk(userId);
@@ -506,9 +506,13 @@ const authController = {
         return res.status(404).json({ message: '用户不存在' });
       }
 
+      // 标准化邮箱地址，与发送验证码时保持一致
+      const { normalizeEmail } = require('validator');
+      email = normalizeEmail(email);
+
       // 验证验证码
       const { verifyCode } = require('../utils/verificationCode');
-      const verificationResult = verifyCode(email, verificationCode);
+      const verificationResult = verifyCode(email, verificationCode, 'updateEmail');
       if (!verificationResult.valid) {
         return res.status(400).json({ message: verificationResult.message });
       }
@@ -611,13 +615,31 @@ const authController = {
       console.log('用户ID:', userId);
       console.log('用户角色:', userRole);
 
-      // 禁止管理员注销账号
       if (userRole === 'admin') {
         console.log('管理员账号不能注销');
         return res.status(403).json({ message: '管理员账号不能注销' });
       }
 
-      // 使用User模型来删除用户，而不是使用req.user.destroy()方法
+      const { Post, Comment, FriendLink, Like, Favorite, Notification, OperationLog, ExpLog, CheckIn, UserAchievement, UserTask } = require('../models');
+
+      await Promise.all([
+        Post.destroy({ where: { author_id: userId } }),
+        Comment.destroy({ where: { user_id: userId } }),
+        FriendLink.destroy({ where: { user_id: userId } }),
+        Like.destroy({ where: { user_id: userId } }),
+        Favorite.destroy({ where: { user_id: userId } }),
+        Notification.destroy({ where: { user_id: userId } }),
+        OperationLog.destroy({ where: { user_id: userId } }),
+        ExpLog.destroy({ where: { user_id: userId } }),
+        CheckIn.destroy({ where: { user_id: userId } }),
+        UserAchievement.destroy({ where: { user_id: userId } }),
+        UserTask.destroy({ where: { user_id: userId } })
+      ]);
+
+      // 先清除current_token以强制注销
+      await User.update({ current_token: null }, { where: { id: userId } });
+
+      // 然后删除用户
       await User.destroy({ where: { id: userId } });
 
       logger.info('账号注销成功', { username: req.user.username, userId: userId });

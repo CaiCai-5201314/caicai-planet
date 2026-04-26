@@ -235,11 +235,11 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   User.associate = (models) => {
-    User.hasMany(models.Post, { foreignKey: 'author_id', as: 'posts' });
-    User.hasMany(models.Comment, { foreignKey: 'user_id', as: 'comments' });
-    User.hasMany(models.FriendLink, { foreignKey: 'user_id', as: 'friendLinks' });
-    User.hasMany(models.Like, { foreignKey: 'user_id', as: 'likes' });
-    User.hasMany(models.Favorite, { foreignKey: 'user_id', as: 'favorites' });
+    User.hasMany(models.Post, { foreignKey: 'author_id', as: 'posts', onDelete: 'CASCADE' });
+    User.hasMany(models.Comment, { foreignKey: 'user_id', as: 'comments', onDelete: 'CASCADE' });
+    User.hasMany(models.FriendLink, { foreignKey: 'user_id', as: 'friendLinks', onDelete: 'CASCADE' });
+    User.hasMany(models.Like, { foreignKey: 'user_id', as: 'likes', onDelete: 'CASCADE' });
+    User.hasMany(models.Favorite, { foreignKey: 'user_id', as: 'favorites', onDelete: 'CASCADE' });
     User.belongsTo(models.UserLevel, { foreignKey: 'level', targetKey: 'level', as: 'userLevel', constraints: false });
     User.belongsTo(models.MoonCenter, { foreignKey: 'moon_center_id', as: 'moonCenter', constraints: false });
   };

@@ -13,7 +13,7 @@ export default function AuthProtected({ children }) {
     } else {
       navigate('/login');
     }
-  }, [isAuthenticated, navigate, fetchUser]);
+  }, [navigate]);
 
   if (isLoading) {
     return (

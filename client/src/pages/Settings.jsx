@@ -24,8 +24,11 @@ export default function Settings() {
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    email: '',
+    verificationCode: ''
   });
+  const [passwordMode, setPasswordMode] = useState('current'); // 'current' 或 'verification'
   
   // 偏好设置
   const [preferenceSettings, setPreferenceSettings] = useState({
@@ -56,8 +59,8 @@ export default function Settings() {
   useEffect(() => {
     if (user) {
       setSecurityForm({
-        username: user.username || '',
-        email: user.email || ''
+        username: '',
+        email: ''
       });
       // 初始化偏好设置
       setPreferenceSettings({
@@ -141,7 +144,8 @@ export default function Settings() {
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改用户名</h4>
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">用户名7天只能修改一次</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">用户名7天只能修改一次</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">当前用户名：{user?.username || '未设置'}</p>
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         try {
@@ -181,6 +185,7 @@ export default function Settings() {
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改邮箱</h4>
                       </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">当前邮箱：{user?.email || '未设置'}</p>
                       <form onSubmit={async (e) => {
                         e.preventDefault();
                         try {
@@ -227,7 +232,7 @@ export default function Settings() {
                                     return;
                                   }
                                   try {
-                                    await api.post('/auth/send-verification-code', { email: securityForm.email });
+                                    await api.post('/verification/send', { email: securityForm.email, type: 'updateEmail' });
                                     toast.success('验证码已发送到您的邮箱');
                                   } catch (error) {
                                     toast.error(error.response?.data?.message || '发送验证码失败');
@@ -259,61 +264,198 @@ export default function Settings() {
                         </div>
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">修改密码</h4>
                       </div>
-                      <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            当前密码
-                          </label>
-                          <input
-                            type="password"
-                            required
-                            autoComplete="current-password"
-                            value={passwordForm.oldPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
-                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
-                            placeholder="请输入当前密码"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            新密码
-                          </label>
-                          <input
-                            type="password"
-                            required
-                            autoComplete="new-password"
-                            value={passwordForm.newPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
-                            placeholder="至少6个字符"
-                            minLength={6}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            确认新密码
-                          </label>
-                          <input
-                            type="password"
-                            required
-                            autoComplete="new-password"
-                            value={passwordForm.confirmPassword}
-                            onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                            className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
-                            placeholder="请再次输入新密码"
-                          />
-                        </div>
-
+                      
+                      {/* 模式切换 */}
+                      <div className="flex mb-6 border-2 border-gray-200 dark:border-gray-600 rounded-xl overflow-hidden">
                         <button
-                          type="submit"
-                          className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
+                          onClick={() => setPasswordMode('current')}
+                          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${passwordMode === 'current' ? 'bg-planet-purple text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
                         >
-                          <FiSave size={20} />
-                          <span>修改密码</span>
+                          使用当前密码修改
                         </button>
-                      </form>
+                        <button
+                          onClick={() => setPasswordMode('verification')}
+                          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${passwordMode === 'verification' ? 'bg-planet-purple text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                        >
+                          使用邮箱验证码修改
+                        </button>
+                      </div>
+                      
+                      {/* 当前密码模式 */}
+                      {passwordMode === 'current' && (
+                        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              当前密码
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              autoComplete="current-password"
+                              value={passwordForm.oldPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, oldPassword: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="请输入当前密码"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              新密码
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              autoComplete="new-password"
+                              value={passwordForm.newPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="至少6个字符"
+                              minLength={6}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              确认新密码
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              autoComplete="new-password"
+                              value={passwordForm.confirmPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="请再次输入新密码"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
+                          >
+                            <FiSave size={20} />
+                            <span>修改密码</span>
+                          </button>
+                        </form>
+                      )}
+                      
+                      {/* 邮箱验证码模式 */}
+                      {passwordMode === 'verification' && (
+                        <form onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                            toast.error('两次输入的密码不一致');
+                            return;
+                          }
+                          try {
+                            // 先验证验证码
+                            const verifyResponse = await api.post('/auth/verify-code', {
+                              email: passwordForm.email,
+                              code: passwordForm.verificationCode
+                            });
+                            
+                            if (verifyResponse.data.message === '验证码验证成功') {
+                              // 使用返回的token重置密码
+                              await api.post('/auth/reset-password', {
+                                token: verifyResponse.data.token,
+                                newPassword: passwordForm.newPassword
+                              });
+                              toast.success('密码修改成功');
+                              setPasswordForm({ ...passwordForm, email: '', verificationCode: '', newPassword: '', confirmPassword: '' });
+                            }
+                          } catch (error) {
+                            toast.error(error.response?.data?.message || '修改失败');
+                          }
+                        }} className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              邮箱
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={passwordForm.email}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, email: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="请输入您的邮箱"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              验证码
+                            </label>
+                            <div className="flex space-x-3">
+                              <input
+                                type="text"
+                                required
+                                value={passwordForm.verificationCode}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, verificationCode: e.target.value })}
+                                className="flex-1 px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                                placeholder="请输入验证码"
+                              />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!passwordForm.email) {
+                                    toast.error('请先输入邮箱');
+                                    return;
+                                  }
+                                  try {
+                                    await api.post('/auth/forgot-password', { email: passwordForm.email });
+                                    toast.success('验证码已发送到您的邮箱');
+                                  } catch (error) {
+                                    toast.error(error.response?.data?.message || '发送验证码失败');
+                                  }
+                                }}
+                                className="px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl hover:shadow-lg transition-all font-medium whitespace-nowrap"
+                              >
+                                发送验证码
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              新密码
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              autoComplete="new-password"
+                              value={passwordForm.newPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="至少6个字符"
+                              minLength={6}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              确认新密码
+                            </label>
+                            <input
+                              type="password"
+                              required
+                              autoComplete="new-password"
+                              value={passwordForm.confirmPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                              className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:border-planet-purple focus:bg-white dark:focus:bg-gray-700 focus:ring-4 focus:ring-planet-purple/10 outline-none transition-all duration-300 text-gray-900 dark:text-gray-100"
+                              placeholder="请再次输入新密码"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-xl font-semibold hover:shadow-xl hover:shadow-planet-purple/25 transition-all duration-300 hover:scale-[1.02]"
+                          >
+                            <FiSave size={20} />
+                            <span>使用验证码修改密码</span>
+                          </button>
+                        </form>
+                      )}
                     </div>
 
 
