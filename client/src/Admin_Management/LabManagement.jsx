@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiCalendar, FiAward, FiSettings, FiPlus, FiEdit, FiTrash2, FiSave, FiX, FiCheck, FiHelpCircle } from 'react-icons/fi';
+import { FiCalendar, FiAward, FiSettings, FiPlus, FiEdit, FiTrash2, FiSave, FiX, FiCheck, FiHelpCircle, FiEye } from 'react-icons/fi';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -8,7 +8,11 @@ const LabManagement = () => {
   const [events, setEvents] = useState([]);
   const [achievements, setAchievements] = useState([]);
   const [qaItems, setQaItems] = useState([]);
+  const [diceRecords, setDiceRecords] = useState([]);
+  const [eventParticipants, setEventParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isViewingEvent, setIsViewingEvent] = useState(false);
   
   // 表单状态
   const [eventForm, setEventForm] = useState({
@@ -17,6 +21,7 @@ const LabManagement = () => {
     start_time: '',
     end_time: '',
     reward_type: 'points',
+    custom_reward_type: '',
     reward_value: 0
   });
   
@@ -41,6 +46,23 @@ const LabManagement = () => {
     question: '',
     answer: ''
   });
+  
+  // 设置表单状态
+  const [settingsForm, setSettingsForm] = useState({
+    labEnabled: true,
+    eventMaxParticipants: 100,
+    achievementThreshold: 5,
+    rewardMultiplier: 1.0,
+    customMessage: '欢迎来到星球实验室！',
+    // 骰子游戏设置
+    diceEnabled: true,
+    diceMaxRollsPerHour: 1,
+    diceSuccessReward: 0,
+    diceSuccessMessage: '恭喜你！投中了 {value} 点，允许做你想做的事情！',
+    diceFailureMessage: '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'
+  });
+  
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -51,15 +73,23 @@ const LabManagement = () => {
       setLoading(true);
       
       // 并行请求数据
-      const [eventsRes, achievementsRes, qaRes] = await Promise.all([
+      const [eventsRes, achievementsRes, qaRes, settingsRes, diceRecordsRes] = await Promise.all([
         api.get('/lab/events'),
         api.get('/lab/achievements'),
-        api.get('/lab/qa')
+        api.get('/lab/qa'),
+        api.get('/lab/settings'),
+        api.get('/lab/dice/records')
       ]);
 
       setEvents(eventsRes.data.events);
       setAchievements(achievementsRes.data.achievements);
       setQaItems(qaRes.data.qa || []);
+      setDiceRecords(diceRecordsRes.data.records || []);
+      
+      // 更新设置表单
+      if (settingsRes.data.settings) {
+        setSettingsForm(settingsRes.data.settings);
+      }
     } catch (error) {
       console.error('获取实验室数据失败:', error);
       toast.error('获取实验室数据失败');
@@ -76,7 +106,24 @@ const LabManagement = () => {
 
   const handleAddEvent = async () => {
     try {
-      await api.post('/lab/events', eventForm);
+      // 验证时间格式
+      if (!eventForm.start_time || !eventForm.end_time) {
+        toast.error('请选择开始时间和结束时间');
+        return;
+      }
+      
+      // 验证结束时间必须晚于开始时间
+      if (new Date(eventForm.end_time) <= new Date(eventForm.start_time)) {
+        toast.error('结束时间必须晚于开始时间');
+        return;
+      }
+      
+      const eventData = {
+        ...eventForm,
+        reward_type: eventForm.reward_type === 'custom' ? eventForm.custom_reward_type : eventForm.reward_type
+      };
+      
+      await api.post('/lab/events', eventData);
       toast.success('创建活动成功');
       setEventForm({
         title: '',
@@ -84,6 +131,7 @@ const LabManagement = () => {
         start_time: '',
         end_time: '',
         reward_type: 'points',
+        custom_reward_type: '',
         reward_value: 0
       });
       setIsAddingEvent(false);
@@ -95,12 +143,14 @@ const LabManagement = () => {
   };
 
   const handleEditEvent = (event) => {
+    const isCustomReward = !['points', 'exp', 'achievement_points', 'badge'].includes(event.reward_type);
     setEventForm({
       title: event.title,
       description: event.description,
       start_time: event.start_time,
       end_time: event.end_time,
-      reward_type: event.reward_type,
+      reward_type: isCustomReward ? 'custom' : event.reward_type,
+      custom_reward_type: isCustomReward ? event.reward_type : '',
       reward_value: event.reward_value
     });
     setEditingEventId(event.id);
@@ -108,7 +158,24 @@ const LabManagement = () => {
 
   const handleUpdateEvent = async () => {
     try {
-      await api.put(`/lab/events/${editingEventId}`, eventForm);
+      // 验证时间格式
+      if (!eventForm.start_time || !eventForm.end_time) {
+        toast.error('请选择开始时间和结束时间');
+        return;
+      }
+      
+      // 验证结束时间必须晚于开始时间
+      if (new Date(eventForm.end_time) <= new Date(eventForm.start_time)) {
+        toast.error('结束时间必须晚于开始时间');
+        return;
+      }
+      
+      const eventData = {
+        ...eventForm,
+        reward_type: eventForm.reward_type === 'custom' ? eventForm.custom_reward_type : eventForm.reward_type
+      };
+      
+      await api.put(`/lab/events/${editingEventId}`, eventData);
       toast.success('更新活动成功');
       setEventForm({
         title: '',
@@ -116,6 +183,7 @@ const LabManagement = () => {
         start_time: '',
         end_time: '',
         reward_type: 'points',
+        custom_reward_type: '',
         reward_value: 0
       });
       setEditingEventId(null);
@@ -136,6 +204,22 @@ const LabManagement = () => {
         console.error('删除活动失败:', error);
         toast.error('删除活动失败');
       }
+    }
+  };
+  
+  const handleViewEvent = async (event) => {
+    try {
+      setSelectedEvent(event);
+      // 获取活动参与者信息
+      const res = await api.get(`/lab/events/${event.id}/participants`);
+      setEventParticipants(res.data.participants || []);
+      setIsViewingEvent(true);
+    } catch (error) {
+      console.error('获取活动参与者失败:', error);
+      // 不显示错误提示，因为可能只是没有用户参加
+      setSelectedEvent(event);
+      setEventParticipants([]);
+      setIsViewingEvent(true);
     }
   };
 
@@ -214,6 +298,28 @@ const LabManagement = () => {
   const handleQaInputChange = (e) => {
     const { name, value } = e.target;
     setQaForm(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // 设置管理
+  const handleSettingsInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setSettingsForm(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) : value
+    }));
+  };
+  
+  const handleSaveSettings = async () => {
+    try {
+      setIsSavingSettings(true);
+      await api.put('/lab/settings', settingsForm);
+      toast.success('设置保存成功');
+    } catch (error) {
+      console.error('保存设置失败:', error);
+      toast.error('保存设置失败');
+    } finally {
+      setIsSavingSettings(false);
+    }
   };
 
   const handleAddQa = async () => {
@@ -348,6 +454,36 @@ const LabManagement = () => {
             <span>常见问题</span>
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab('dice')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+            activeTab === 'dice'
+              ? 'bg-planet-purple text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>骰子游戏</span>
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('diceRecords')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+            activeTab === 'diceRecords'
+              ? 'bg-planet-purple text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span>骰子记录</span>
+          </div>
+        </button>
       </div>
 
       {/* 内容区域 */}
@@ -426,15 +562,34 @@ const LabManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励类型</label>
-                      <select
-                        name="reward_type"
-                        value={eventForm.reward_type}
-                        onChange={handleEventInputChange}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
-                      >
-                        <option value="points">月球分</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          name="reward_type"
+                          value={eventForm.reward_type}
+                          onChange={handleEventInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none appearance-none"
+                        >
+                          <option value="points">月球分</option>
+                          <option value="exp">经验值</option>
+                          <option value="achievement_points">成就点</option>
+                          <option value="badge">特殊徽章</option>
+                          <option value="custom">自定义</option>
+                        </select>
+                      </div>
                     </div>
+                    {eventForm.reward_type === 'custom' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">自定义奖励类型</label>
+                        <input
+                          type="text"
+                          name="custom_reward_type"
+                          value={eventForm.custom_reward_type || ''}
+                          onChange={handleEventInputChange}
+                          placeholder="请输入自定义奖励类型"
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                        />
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励值</label>
                       <input
@@ -528,15 +683,34 @@ const LabManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励类型</label>
-                      <select
-                        name="reward_type"
-                        value={eventForm.reward_type}
-                        onChange={handleEventInputChange}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
-                      >
-                        <option value="points">月球分</option>
-                      </select>
+                      <div className="relative">
+                        <select
+                          name="reward_type"
+                          value={eventForm.reward_type}
+                          onChange={handleEventInputChange}
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none appearance-none"
+                        >
+                          <option value="points">月球分</option>
+                          <option value="exp">经验值</option>
+                          <option value="achievement_points">成就点</option>
+                          <option value="badge">特殊徽章</option>
+                          <option value="custom">自定义</option>
+                        </select>
+                      </div>
                     </div>
+                    {eventForm.reward_type === 'custom' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">自定义奖励类型</label>
+                        <input
+                          type="text"
+                          name="custom_reward_type"
+                          value={eventForm.custom_reward_type || ''}
+                          onChange={handleEventInputChange}
+                          placeholder="请输入自定义奖励类型"
+                          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                        />
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励值</label>
                       <input
@@ -617,19 +791,28 @@ const LabManagement = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          奖励: {event.reward_value} 月球分
+                          {event.reward_value > 0 && `奖励: ${event.reward_value} ${event.reward_type === 'points' ? '月球分' : event.reward_type === 'exp' ? '经验值' : event.reward_type === 'achievement_points' ? '成就点' : event.reward_type === 'badge' ? '特殊徽章' : event.reward_type}`}
                         </span>
                       </div>
                       <div className="flex gap-2">
                         <button
+                          onClick={() => handleViewEvent(event)}
+                          className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="查看详情"
+                        >
+                          <FiEye size={18} />
+                        </button>
+                        <button
                           onClick={() => handleEditEvent(event)}
                           className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                          title="编辑"
                         >
                           <FiEdit size={18} />
                         </button>
                         <button
                           onClick={() => handleDeleteEvent(event.id)}
                           className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="删除"
                         >
                           <FiTrash2 size={18} />
                         </button>
@@ -639,6 +822,125 @@ const LabManagement = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 活动详情弹窗 */}
+        {isViewingEvent && selectedEvent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">活动详情</h3>
+                <button
+                  onClick={() => setIsViewingEvent(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动标题</label>
+                  <p className="text-gray-900 dark:text-white">{selectedEvent.title}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动描述</label>
+                  <p className="text-gray-700 dark:text-gray-300">{selectedEvent.description}</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">开始时间</label>
+                    <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.start_time).toLocaleString('zh-CN')}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">结束时间</label>
+                    <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.end_time).toLocaleString('zh-CN')}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动状态</label>
+                  <p className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEventStatusClass(selectedEvent.status)}`}>
+                    {selectedEvent.status === 'upcoming' ? '即将开始' : selectedEvent.status === 'active' ? '进行中' : '已结束'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励信息</label>
+                  <p className="text-gray-700 dark:text-gray-300">
+                    {selectedEvent.reward_value} {selectedEvent.reward_type === 'points' ? '月球分' : selectedEvent.reward_type === 'exp' ? '经验值' : selectedEvent.reward_type === 'achievement_points' ? '成就点' : selectedEvent.reward_type === 'badge' ? '特殊徽章' : selectedEvent.reward_type}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">创建时间</label>
+                  <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.created_at).toLocaleString('zh-CN')}</p>
+                </div>
+                {selectedEvent.updated_at && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">更新时间</label>
+                    <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.updated_at).toLocaleString('zh-CN')}</p>
+                  </div>
+                )}
+                
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">参与者信息</label>
+                  <p className="text-gray-700 dark:text-gray-300 mb-3">
+                    参与人数: {eventParticipants.length}
+                  </p>
+                  
+                  {eventParticipants.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400">暂无用户参加</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              用户ID
+                            </th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              用户名
+                            </th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              邮箱
+                            </th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              状态
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          {eventParticipants.map((participant) => (
+                            <tr key={participant.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {participant.user_uid}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {participant.username}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+                                {participant.email}
+                              </td>
+                              <td className="px-4 py-2 text-sm">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${participant.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                  {participant.status === 'completed' ? '已完成' : '已注册'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setIsViewingEvent(false)}
+                  className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -930,13 +1232,89 @@ const LabManagement = () => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">实验室设置</h2>
             <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">实验室配置</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                这里可以配置实验室的全局设置，目前暂无需要配置的选项。
-              </p>
-              <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                <FiSettings size={16} />
-                <span className="text-sm">实验室功能已启用</span>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-4">自定义设置</h3>
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="labEnabled"
+                    checked={settingsForm.labEnabled}
+                    onChange={handleSettingsInputChange}
+                    className="w-4 h-4 text-planet-purple rounded focus:ring-planet-purple"
+                  />
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">实验室功能启用</label>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动最大参与人数</label>
+                  <input
+                    type="number"
+                    name="eventMaxParticipants"
+                    value={settingsForm.eventMaxParticipants}
+                    onChange={handleSettingsInputChange}
+                    min="1"
+                    max="1000"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">成就解锁阈值</label>
+                  <input
+                    type="number"
+                    name="achievementThreshold"
+                    value={settingsForm.achievementThreshold}
+                    onChange={handleSettingsInputChange}
+                    min="1"
+                    max="100"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励倍率</label>
+                  <input
+                    type="number"
+                    name="rewardMultiplier"
+                    value={settingsForm.rewardMultiplier}
+                    onChange={handleSettingsInputChange}
+                    min="0.1"
+                    max="10"
+                    step="0.1"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">自定义欢迎信息</label>
+                  <textarea
+                    name="customMessage"
+                    value={settingsForm.customMessage}
+                    onChange={handleSettingsInputChange}
+                    rows={3}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                  />
+                </div>
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="px-6 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors flex items-center gap-2"
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>保存中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiSave size={16} />
+                        <span>保存设置</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1105,6 +1483,232 @@ const LabManagement = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* 骰子游戏管理 */}
+        {activeTab === 'dice' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">骰子游戏管理</h2>
+            </div>
+
+            <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-6">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">游戏设置</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-gray-700 dark:text-gray-300">
+                        启用骰子游戏
+                      </label>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={settingsForm.diceEnabled !== false}
+                          onChange={(e) => setSettingsForm(prev => ({ ...prev, diceEnabled: e.target.checked }))}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-planet-purple"></div>
+                      </label>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        每小时最大投掷次数
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={settingsForm.diceMaxRollsPerHour || 1}
+                        onChange={(e) => setSettingsForm(prev => ({ ...prev, diceMaxRollsPerHour: parseInt(e.target.value) }))}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                      />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        设置用户每小时可以投掷骰子的最大次数
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        成功奖励
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={settingsForm.diceSuccessReward || 0}
+                        onChange={(e) => setSettingsForm(prev => ({ ...prev, diceSuccessReward: parseInt(e.target.value) }))}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                      />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        用户投中目标数字时获得的月球分奖励
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        成功提示信息
+                      </label>
+                      <textarea
+                        value={settingsForm.diceSuccessMessage || '恭喜你！投中了 {value} 点，允许做你想做的事情！'}
+                        onChange={(e) => setSettingsForm(prev => ({ ...prev, diceSuccessMessage: e.target.value }))}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                        rows={3}
+                        placeholder="恭喜你！投中了 {value} 点，允许做你想做的事情！"
+                      />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        用户投中目标数字时显示的提示信息，{"{value}"} 会被替换为实际投中的点数
+                      </p>
+                    </div>
+                    
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        失败提示信息
+                      </label>
+                      <textarea
+                        value={settingsForm.diceFailureMessage || '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'}
+                        onChange={(e) => setSettingsForm(prev => ({ ...prev, diceFailureMessage: e.target.value }))}
+                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                        rows={3}
+                        placeholder="很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！"
+                      />
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        用户未投中目标数字时显示的提示信息，{"{value}"} 会被替换为实际投中的点数，{"{target}"} 会被替换为目标数字
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">游戏说明</h3>
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                    <p className="text-gray-700 dark:text-gray-300 mb-3">
+                      骰子游戏规则：
+                    </p>
+                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-400">
+                      <li>简单难度：系统生成3个不重复的1~6随机数，投中任意一个即可成功</li>
+                      <li>中等难度：系统生成2个不重复的1~6随机数，投中任意一个即可成功</li>
+                      <li>困难难度：系统生成1个1~6随机数，必须投中该数字才能成功</li>
+                      <li>用户每小时只能投掷指定次数</li>
+                      <li>投中目标数字后，用户可以做指定的事情</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings}
+                    className="px-6 py-2.5 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingSettings ? '保存中...' : '保存设置'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 骰子记录管理 */}
+        {activeTab === 'diceRecords' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">骰子投掷记录</h2>
+              <button
+                onClick={fetchData}
+                className="flex items-center gap-2 px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>刷新记录</span>
+              </button>
+            </div>
+
+            <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-6">
+              {diceRecords.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">🎲</div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">暂无投掷记录</h3>
+                  <p className="text-gray-600 dark:text-gray-400">用户投掷骰子后，记录会显示在这里</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          用户
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          难度
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          目标数字
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          投掷结果
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          结果
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          提示信息
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          时间
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {diceRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {record.username}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              ID: {record.user_id}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              record.difficulty === 'easy' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : record.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                              {record.difficulty === 'easy' ? '简单' : record.difficulty === 'medium' ? '中等' : '困难'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {record.target_numbers.join(', ')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-planet-purple text-white font-bold">
+                              {record.result}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              record.success ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                              {record.success ? '成功' : '失败'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
+                            {record.success_message || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(record.created_at).toLocaleString('zh-CN')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -1903,11 +1903,11 @@ function AdminLayout({ children }) {
           { path: '/admin-caicai0304/user-tasks', label: '用户任务管理', permission: 'userTaskManagement' }
         ]
       },
-      { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
-      { path: '/admin-caicai0304/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
-      { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
-      { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
       { path: '/admin-caicai0304/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
+      { path: '/admin-caicai0304/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
+      { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
+      { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
+      { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
       { path: '/admin-caicai0304/lab', icon: FiSettings, label: '星球实验室管理', permission: 'labManagement' },
     ];
 
@@ -3275,6 +3275,8 @@ function PostManagement() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [previewPost, setPreviewPost] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -3335,6 +3337,17 @@ function PostManagement() {
       }
     }
   };
+  
+  const handlePreviewPost = async (postId) => {
+    try {
+      const response = await api.get(`/posts/${postId}`);
+      setPreviewPost(response.data.post);
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error('获取文章详情失败:', error);
+      toast.error('获取文章详情失败');
+    }
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -3358,7 +3371,7 @@ function PostManagement() {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)] max-w-7xl mx-auto w-full px-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">文章管理</h2>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -3436,36 +3449,38 @@ function PostManagement() {
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-2 flex-wrap gap-y-2">
                     <button
+                      onClick={() => handlePreviewPost(post.id)}
+                      className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="预览文章"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    <button
                       onClick={() => handleTogglePin(post.id)}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                        post.is_pinned
-                          ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
-                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${post.is_pinned ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
                     >
                       {post.is_pinned ? '取消置顶' : '置顶'}
                     </button>
                     {post.status === 'pending' && (
                       <button
                         onClick={() => handleStatusChange(post.id, 'published')}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors"
+                        className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors"
                       >
                         通过
                       </button>
                     )}
                     <button
                       onClick={() => handleStatusChange(post.id, post.status === 'published' ? 'hidden' : 'published')}
-                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                        post.status === 'published'
-                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          : 'bg-planet-purple/10 text-planet-purple hover:bg-planet-purple/20'
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${post.status === 'published' ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-planet-purple/10 text-planet-purple hover:bg-planet-purple/20'}`}
                     >
                       {post.status === 'published' ? '隐藏' : '发布'}
                     </button>
                     <button
                       onClick={() => handleDeletePost(post.id)}
-                      className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                      className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
                     >
                       删除
                     </button>
@@ -3530,6 +3545,76 @@ function PostManagement() {
           </div>
         )}
       </div>
+
+      {/* 文章预览弹窗 */}
+      {showPreviewModal && previewPost && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">文章预览</h3>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{previewPost.title}</h1>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-2">
+                  <img
+                    src={(previewPost.author?.avatar && previewPost.author.avatar.length > 0 && previewPost.author.avatar !== '/uploads/avatars/default.png') ? previewPost.author.avatar : '/moren.png'}
+                    alt={previewPost.author?.nickname || previewPost.author?.username}
+                    className="w-6 h-6 rounded-full object-cover"
+                    onError={(e) => {
+                      e.target.src = '/moren.png';
+                    }}
+                  />
+                  <span>{previewPost.author?.nickname || previewPost.author?.username}</span>
+                </div>
+                <span>{new Date(previewPost.created_at).toLocaleString('zh-CN')}</span>
+                <span>浏览 {previewPost.view_count || 0}</span>
+              </div>
+              {previewPost.image && (
+                <div className="w-full">
+                  <img
+                    src={previewPost.image}
+                    alt={previewPost.title}
+                    className="w-full h-auto rounded-lg object-cover"
+                    onError={(e) => {
+                      e.target.src = '/moren.png';
+                    }}
+                  />
+                </div>
+              )}
+              <div className="prose dark:prose-invert max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: previewPost.content }} />
+              </div>
+              <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  标签: {previewPost.tags?.map(tag => tag.name).join(', ') || '无'}
+                </span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  分类: {previewPost.category?.name || '未分类'}
+                </span>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

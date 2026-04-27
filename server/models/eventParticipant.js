@@ -48,6 +48,10 @@ module.exports = (sequelize) => {
       foreignKey: 'event_id',
       as: 'event'
     });
+    EventParticipant.belongsTo(models.User, {
+      foreignKey: 'user_id',
+      as: 'User'
+    });
   };
 
   return EventParticipant;

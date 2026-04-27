@@ -53,12 +53,14 @@ exports.createEvent = async (req, res) => {
 exports.updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, start_time, end_time, status, reward_type, reward_value } = req.body;
+    const { title, description, start_time, end_time, reward_type, reward_value } = req.body;
     
     const event = await VirtualEvent.findByPk(id);
     if (!event) {
       return res.status(404).json({ success: false, message: '活动不存在' });
     }
+    
+    const status = new Date(start_time) > new Date() ? 'upcoming' : (new Date(end_time) < new Date() ? 'ended' : 'active');
     
     await event.update({
       title,
@@ -355,15 +357,137 @@ exports.deleteQa = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const qa = await QA.findByPk(id);
+    const qa = await Qa.findByPk(id);
     if (!qa) {
-      return res.status(404).json({ success: false, message: '常见问题不存在' });
+      return res.status(404).json({ success: false, message: '问题不存在' });
     }
     
     await qa.destroy();
-    res.status(200).json({ success: true, message: '常见问题删除成功' });
+    res.status(200).json({ success: true, message: '问题删除成功' });
   } catch (error) {
-    console.error('删除常见问题失败:', error);
-    res.status(500).json({ success: false, message: '删除常见问题失败' });
+    console.error('删除问题失败:', error);
+    res.status(500).json({ success: false, message: '删除问题失败' });
+  }
+};
+
+exports.getEventParticipants = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    const participants = await EventParticipant.findAll({
+      where: { event_id: eventId },
+      include: [{
+        model: User,
+        attributes: ['id', 'uid', 'username', 'email']
+      }]
+    });
+    
+    const formattedParticipants = participants.map(p => ({
+      id: p.id,
+      user_id: p.User ? p.User.id : null,
+      user_uid: p.User ? p.User.uid : null,
+      username: p.User ? p.User.username : '未知用户',
+      email: p.User ? p.User.email : '',
+      status: p.status,
+      score: p.score,
+      created_at: p.created_at
+    }));
+    
+    res.status(200).json({ success: true, participants: formattedParticipants });
+  } catch (error) {
+    console.error('获取活动参与者失败:', error);
+    res.status(500).json({ success: false, message: '获取活动参与者失败' });
+  }
+};
+
+// 实验室设置相关功能
+let labSettings = {
+  labEnabled: true,
+  eventMaxParticipants: 100,
+  achievementThreshold: 5,
+  rewardMultiplier: 1.0,
+  customMessage: '欢迎来到星球实验室！',
+  // 骰子游戏设置
+  diceEnabled: true,
+  diceMaxRollsPerHour: 1,
+  diceSuccessReward: 0,
+  diceSuccessMessage: '恭喜你！投中了 {value} 点，允许做你想做的事情！',
+  diceFailureMessage: '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'
+};
+
+// 骰子游戏记录
+let diceRecords = [];
+
+exports.getSettings = async (req, res) => {
+  try {
+    res.status(200).json({ success: true, settings: labSettings });
+  } catch (error) {
+    console.error('获取实验室设置失败:', error);
+    res.status(500).json({ success: false, message: '获取实验室设置失败' });
+  }
+};
+
+exports.updateSettings = async (req, res) => {
+  try {
+    const { labEnabled, eventMaxParticipants, achievementThreshold, rewardMultiplier, customMessage, diceEnabled, diceMaxRollsPerHour, diceSuccessReward, diceSuccessMessage, diceFailureMessage } = req.body;
+    
+    labSettings = {
+      labEnabled: labEnabled !== undefined ? labEnabled : labSettings.labEnabled,
+      eventMaxParticipants: eventMaxParticipants !== undefined ? eventMaxParticipants : labSettings.eventMaxParticipants,
+      achievementThreshold: achievementThreshold !== undefined ? achievementThreshold : labSettings.achievementThreshold,
+      rewardMultiplier: rewardMultiplier !== undefined ? rewardMultiplier : labSettings.rewardMultiplier,
+      customMessage: customMessage !== undefined ? customMessage : labSettings.customMessage,
+      // 骰子游戏设置
+      diceEnabled: diceEnabled !== undefined ? diceEnabled : labSettings.diceEnabled,
+      diceMaxRollsPerHour: diceMaxRollsPerHour !== undefined ? diceMaxRollsPerHour : labSettings.diceMaxRollsPerHour,
+      diceSuccessReward: diceSuccessReward !== undefined ? diceSuccessReward : labSettings.diceSuccessReward,
+      diceSuccessMessage: diceSuccessMessage !== undefined ? diceSuccessMessage : labSettings.diceSuccessMessage,
+      diceFailureMessage: diceFailureMessage !== undefined ? diceFailureMessage : labSettings.diceFailureMessage
+    };
+    
+    res.status(200).json({ success: true, settings: labSettings, message: '设置更新成功' });
+  } catch (error) {
+    console.error('更新实验室设置失败:', error);
+    res.status(500).json({ success: false, message: '更新实验室设置失败' });
+  }
+};
+
+// 骰子游戏记录相关功能
+exports.saveDiceRecord = async (req, res) => {
+  try {
+    const { user_id, username, difficulty, target_numbers, result, success, success_message } = req.body;
+    
+    const record = {
+      id: Date.now(),
+      user_id,
+      username,
+      difficulty,
+      target_numbers,
+      result,
+      success,
+      success_message,
+      created_at: new Date().toISOString()
+    };
+    
+    diceRecords.unshift(record); // 添加到数组开头，最新的记录在前面
+    
+    // 限制记录数量，只保留最近1000条
+    if (diceRecords.length > 1000) {
+      diceRecords = diceRecords.slice(0, 1000);
+    }
+    
+    res.status(201).json({ success: true, record });
+  } catch (error) {
+    console.error('保存骰子游戏记录失败:', error);
+    res.status(500).json({ success: false, message: '保存骰子游戏记录失败' });
+  }
+};
+
+exports.getDiceRecords = async (req, res) => {
+  try {
+    res.status(200).json({ success: true, records: diceRecords });
+  } catch (error) {
+    console.error('获取骰子游戏记录失败:', error);
+    res.status(500).json({ success: false, message: '获取骰子游戏记录失败' });
   }
 };

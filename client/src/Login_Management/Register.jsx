@@ -213,7 +213,7 @@ export default function Register() {
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     className="input-field pl-10"
-                    placeholder="3-50个字符"
+                    placeholder="3-50个字符，只能包含字母、数字和下划线"
                     minLength={3}
                     maxLength={50}
                   />

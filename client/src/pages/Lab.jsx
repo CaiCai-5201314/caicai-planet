@@ -16,6 +16,31 @@ const Lab = () => {
   const [userEvents, setUserEvents] = useState([]);
   const [qaItems, setQaItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isViewingEvent, setIsViewingEvent] = useState(false);
+  const [newEvents, setNewEvents] = useState([]);
+  const [showEventNotification, setShowEventNotification] = useState(false);
+  // 骰子游戏状态
+  const [diceValue, setDiceValue] = useState(1);
+  const [isRolling, setIsRolling] = useState(false);
+  const [difficulty, setDifficulty] = useState('medium'); // easy, medium, hard
+  const [targetNumbers, setTargetNumbers] = useState([]);
+  const [rollResult, setRollResult] = useState(null); // null, success, failure
+  const [lastRollTime, setLastRollTime] = useState(() => {
+    // 从localStorage中读取最后投掷时间
+    const storedTime = localStorage.getItem('diceLastRollTime');
+    return storedTime ? parseInt(storedTime) : 0;
+  });
+  // 骰子游戏设置
+  const [diceEnabled, setDiceEnabled] = useState(true);
+  const [diceSuccessMessage, setDiceSuccessMessage] = useState('恭喜你！投中了 {value} 点，允许做你想做的事情！');
+  const [diceFailureMessage, setDiceFailureMessage] = useState('很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！');
+  const [diceMaxRollsPerHour, setDiceMaxRollsPerHour] = useState(1);
+  const [diceRollCount, setDiceRollCount] = useState(() => {
+    // 从localStorage中读取投掷次数
+    const storedCount = localStorage.getItem('diceRollCount');
+    return storedCount ? parseInt(storedCount) : 0;
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -32,25 +57,59 @@ const Lab = () => {
       setLoading(true);
       
       // 并行请求数据
-      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes] = await Promise.all([
+      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes, settingsRes] = await Promise.all([
         api.get('/lab/events'),
         api.get('/lab/achievements'),
         api.get(`/lab/users/${user.id}/achievements`),
         api.get(`/lab/users/${user.id}/events`),
-        api.get('/lab/qa')
+        api.get('/lab/qa'),
+        api.get('/lab/settings')
       ]);
 
-      setEvents(eventsRes.data.events || []);
+      const fetchedEvents = eventsRes.data.events || [];
+      setEvents(fetchedEvents);
       setAchievements(achievementsRes.data.achievements || []);
       setUserAchievements(userAchievementsRes.data.achievements || []);
       setUserEvents(userEventsRes.data.events || []);
       setQaItems(qaRes.data.qa || []);
+      
+      // 检查骰子游戏是否启用
+      if (settingsRes.data.settings) {
+        setDiceEnabled(settingsRes.data.settings.diceEnabled !== false);
+        setDiceSuccessMessage(settingsRes.data.settings.diceSuccessMessage || '恭喜你！投中了 {value} 点，允许做你想做的事情！');
+        setDiceFailureMessage(settingsRes.data.settings.diceFailureMessage || '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！');
+        setDiceMaxRollsPerHour(settingsRes.data.settings.diceMaxRollsPerHour || 1);
+      }
+      
+      // 检查新活动并显示通知
+      checkNewEvents(fetchedEvents);
     } catch (error) {
       console.error('获取实验室数据失败:', error);
       toast.error('获取实验室数据失败');
     } finally {
       setLoading(false);
     }
+  };
+  
+  const checkNewEvents = (fetchedEvents) => {
+    // 从 localStorage 获取已查看的活动 ID
+    const viewedEventIds = JSON.parse(localStorage.getItem('viewedEventIds') || '[]');
+    
+    // 过滤出未查看过的活动
+    const unviewedEvents = fetchedEvents.filter(event => !viewedEventIds.includes(event.id));
+    
+    if (unviewedEvents.length > 0) {
+      setNewEvents(unviewedEvents);
+      setShowEventNotification(true);
+      
+      // 更新已查看的活动 ID
+      const updatedViewedIds = [...viewedEventIds, ...unviewedEvents.map(event => event.id)];
+      localStorage.setItem('viewedEventIds', JSON.stringify(updatedViewedIds));
+    }
+  };
+  
+  const handleCloseNotification = () => {
+    setShowEventNotification(false);
   };
 
 
@@ -83,6 +142,133 @@ const Lab = () => {
 
   const isParticipated = (eventId) => {
     return userEvents.some(ue => ue.event_id === eventId);
+  };
+  
+  const handleViewEvent = (event) => {
+    setSelectedEvent(event);
+    setIsViewingEvent(true);
+  };
+  
+  // 生成目标数字（不重复）
+  const generateTargetNumbers = (difficulty) => {
+    let count;
+    switch (difficulty) {
+      case 'easy':
+        count = 3;
+        break;
+      case 'medium':
+        count = 2;
+        break;
+      case 'hard':
+        count = 1;
+        break;
+      default:
+        count = 2;
+    }
+    
+    const numbers = new Set();
+    while (numbers.size < count) {
+      numbers.add(Math.floor(Math.random() * 6) + 1);
+    }
+    return Array.from(numbers);
+  };
+  
+  // 监听难度变化，生成目标数字
+  useEffect(() => {
+    setTargetNumbers(generateTargetNumbers(difficulty));
+    setRollResult(null);
+  }, [difficulty]);
+  
+  // 骰子投掷函数
+  const handleRollDice = async () => {
+    if (isRolling) return;
+    
+    // 检查是否在一小时内已经投掷过多次
+    const now = Date.now();
+    const oneHour = 60 * 60 * 1000;
+    
+    // 检查是否进入了新的小时
+    const currentHour = Math.floor(now / oneHour);
+    const lastHour = Math.floor(lastRollTime / oneHour);
+    
+    // 如果进入了新的小时，重置投掷次数
+    if (currentHour !== lastHour) {
+      setDiceRollCount(0);
+      localStorage.setItem('diceRollCount', '0');
+    }
+    
+    // 检查是否达到每小时最大投掷次数
+    if (diceRollCount >= diceMaxRollsPerHour) {
+      toast.error(`每小时最多只能投掷 ${diceMaxRollsPerHour} 次`);
+      return;
+    }
+    
+    setIsRolling(true);
+    setRollResult(null);
+    
+    // 随机生成一个1-6的数字
+    const randomValue = Math.floor(Math.random() * 6) + 1;
+    
+    // 模拟骰子滚动的动画效果
+    let rollCount = 0;
+    const maxRolls = 10;
+    
+    const rollInterval = setInterval(() => {
+      rollCount++;
+      // 随机显示不同的骰子值，模拟滚动效果
+      setDiceValue(Math.floor(Math.random() * 6) + 1);
+      
+      if (rollCount >= maxRolls) {
+        clearInterval(rollInterval);
+        // 显示最终结果
+        setDiceValue(randomValue);
+        setIsRolling(false);
+        setLastRollTime(now);
+        // 存储最后投掷时间到localStorage
+        localStorage.setItem('diceLastRollTime', now.toString());
+        
+        // 增加投掷次数
+        const newRollCount = diceRollCount + 1;
+        setDiceRollCount(newRollCount);
+        localStorage.setItem('diceRollCount', newRollCount.toString());
+        
+        // 判断是否投中目标数字
+        const success = targetNumbers.includes(randomValue);
+        setRollResult(success ? 'success' : 'failure');
+        
+        // 保存骰子游戏记录
+        const saveRecord = async () => {
+          try {
+            await api.post('/lab/dice/records', {
+              user_id: user.uid || user.id,
+              username: user.username,
+              difficulty,
+              target_numbers: targetNumbers,
+              result: randomValue,
+              success,
+              success_message: success ? diceSuccessMessage.replace('{value}', randomValue) : ''
+            });
+          } catch (error) {
+            console.error('保存骰子游戏记录失败:', error);
+          }
+        };
+        
+        saveRecord();
+        
+        // 显示结果提示
+        if (success) {
+          // 替换 {value} 为实际投中的点数
+          const successMessage = diceSuccessMessage.replace('{value}', randomValue);
+          toast.success(successMessage);
+        } else {
+          // 替换 {value} 为实际投中的点数，{target} 为目标数字
+          const failureMessage = diceFailureMessage
+            .replace('{value}', randomValue)
+            .replace('{target}', targetNumbers.join(', '));
+          toast.error(failureMessage);
+        }
+      }
+    }, 100);
   };
 
   if (loading) {
@@ -145,6 +331,16 @@ const Lab = () => {
               >
                 常见问题
               </button>
+              <button
+                onClick={() => setActiveTab('dice')}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                  activeTab === 'dice'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                骰子游戏
+              </button>
             </div>
           </div>
 
@@ -203,22 +399,24 @@ const Lab = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                              奖励: {event.reward_value} 月球分
+                              {event.reward_value > 0 && `奖励: ${event.reward_value} ${event.reward_type === 'points' ? '月球分' : event.reward_type === 'exp' ? '经验值' : event.reward_type === 'achievement_points' ? '成就点' : event.reward_type === 'badge' ? '特殊徽章' : event.reward_type}`}
                             </span>
                           </div>
-                          <button
-                            onClick={() => handleParticipateEvent(event.id)}
-                            disabled={event.status === 'ended' || isParticipated(event.id)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                              event.status === 'ended'
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                                : isParticipated(event.id)
-                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                                : 'bg-planet-purple text-white hover:bg-planet-purple/90'
-                            }`}
-                          >
-                            {event.status === 'ended' ? '活动已结束' : isParticipated(event.id) ? '已参与' : '立即参与'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleViewEvent(event)}
+                              className="px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            >
+                              查看活动详情
+                            </button>
+                            <button
+                              onClick={() => handleParticipateEvent(event.id)}
+                              disabled={event.status === 'ended' || isParticipated(event.id)}
+                              className={`px-4 py-1 text-sm font-medium rounded-lg transition-colors ${event.status === 'ended' ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' : isParticipated(event.id) ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed' : 'bg-planet-purple text-white hover:bg-planet-purple/90'}`}
+                            >
+                              {event.status === 'ended' ? '活动已结束' : isParticipated(event.id) ? '已参与' : '立即参与'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -315,11 +513,220 @@ const Lab = () => {
                 </div>
               </div>
             )}
+            
+            {activeTab === 'dice' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-planet-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  骰子游戏
+                </h2>
+                
+                {!diceEnabled ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <div className="text-6xl mb-4">🔧</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">游戏正在维护中</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+                      骰子游戏暂时关闭，正在进行维护和更新。请稍后再试，感谢您的理解！
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    {/* 难度选择 */}
+                    <div className="mb-8 w-full max-w-md">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">选择难度</h3>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setDifficulty('easy')}
+                          className={`w-full px-4 py-3 rounded-lg font-medium transition-colors text-left ${difficulty === 'easy' ? 'bg-planet-purple text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>简单</span>
+                            <span className="text-sm">3个目标数字</span>
+                          </div>
+                          <p className="text-sm mt-1 opacity-80">系统生成3个1~6的随机数，投中任意一个即可成功</p>
+                        </button>
+                        <button
+                          onClick={() => setDifficulty('medium')}
+                          className={`w-full px-4 py-3 rounded-lg font-medium transition-colors text-left ${difficulty === 'medium' ? 'bg-planet-purple text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>中等</span>
+                            <span className="text-sm">2个目标数字</span>
+                          </div>
+                          <p className="text-sm mt-1 opacity-80">系统生成2个1~6的随机数，投中任意一个即可成功</p>
+                        </button>
+                        <button
+                          onClick={() => setDifficulty('hard')}
+                          className={`w-full px-4 py-3 rounded-lg font-medium transition-colors text-left ${difficulty === 'hard' ? 'bg-planet-purple text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>困难</span>
+                            <span className="text-sm">1个目标数字</span>
+                          </div>
+                          <p className="text-sm mt-1 opacity-80">系统生成1个1~6的随机数，必须投中该数字才能成功</p>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center mb-8">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">点击骰子开始投掷</h3>
+                      <p className="text-gray-600 dark:text-gray-400">试试你的运气，看看能掷出几点！</p>
+                      
+                      {/* 目标数字显示 */}
+                      {rollResult && (
+                        <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            目标数字: {targetNumbers.join(', ')}
+                          </p>
+                          <p className={`text-sm font-medium mt-1 ${rollResult === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {rollResult === 'success' ? '🎉 投中了！允许做你想做的事情！' : '❌ 未投中，不允许做该事情'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="mb-8">
+                      <button
+                        onClick={handleRollDice}
+                        disabled={isRolling}
+                        className={`w-32 h-32 rounded-2xl bg-white dark:bg-gray-700 border-4 border-planet-purple flex items-center justify-center text-6xl font-bold transition-all duration-300 ${isRolling ? 'animate-spin' : 'hover:scale-105'}`}
+                      >
+                        {diceValue}
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={handleRollDice}
+                      disabled={isRolling}
+                      className={`px-8 py-3 bg-planet-purple text-white rounded-lg font-medium hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {isRolling ? '投掷中...' : '投掷骰子'}
+                    </button>
+                    
+                    <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                      每个小时只能投掷一次
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
+            {/* 活动详情弹窗 */}
+            {isViewingEvent && selectedEvent && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">活动详情</h3>
+                    <button
+                      onClick={() => setIsViewingEvent(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动标题</label>
+                      <p className="text-gray-900 dark:text-white">{selectedEvent.title}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动描述</label>
+                      <p className="text-gray-700 dark:text-gray-300">{selectedEvent.description}</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">开始时间</label>
+                        <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.start_time).toLocaleString('zh-CN')}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">结束时间</label>
+                        <p className="text-gray-700 dark:text-gray-300">{new Date(selectedEvent.end_time).toLocaleString('zh-CN')}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动状态</label>
+                      <p className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEventStatusClass(selectedEvent.status)}`}>
+                        {selectedEvent.status === 'upcoming' ? '即将开始' : selectedEvent.status === 'active' ? '进行中' : '已结束'}
+                      </p>
+                    </div>
+                    {selectedEvent.reward_value > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励信息</label>
+                        <p className="text-gray-700 dark:text-gray-300">
+                          {selectedEvent.reward_value} {selectedEvent.reward_type === 'points' ? '月球分' : selectedEvent.reward_type === 'exp' ? '经验值' : selectedEvent.reward_type === 'achievement_points' ? '成就点' : selectedEvent.reward_type === 'badge' ? '特殊徽章' : selectedEvent.reward_type}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={() => setIsViewingEvent(false)}
+                      className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
+                    >
+                      关闭
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
       </div>
+
+      {/* 新活动通知弹窗 */}
+      {showEventNotification && newEvents.length > 0 && (
+        <div className="fixed bottom-6 right-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-4 max-w-md w-full z-50 animate-fade-in">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <div className="bg-planet-purple/10 p-2 rounded-lg">
+                <FiCalendar className="h-5 w-5 text-planet-purple" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white">新活动通知</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  有 {newEvents.length} 个新活动发布了，快来参与吧！
+                </p>
+                <div className="mt-2 space-y-1">
+                  {newEvents.slice(0, 2).map((event, index) => (
+                    <div key={event.id} className="text-xs text-gray-500 dark:text-gray-400">
+                      {index + 1}. {event.title}
+                    </div>
+                  ))}
+                  {newEvents.length > 2 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      还有 {newEvents.length - 2} 个活动...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleCloseNotification}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                setActiveTab('events');
+                setShowEventNotification(false);
+              }}
+              className="px-3 py-1.5 bg-planet-purple text-white rounded-lg text-sm font-medium hover:bg-planet-purple/90 transition-colors"
+            >
+              查看活动
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
