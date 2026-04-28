@@ -549,7 +549,8 @@ exports.getDiceUnlockStatus = async (req, res) => {
     
     const { PurchaseRecord } = require('../models');
     
-    const dicePurchase = await PurchaseRecord.findOne({
+    // 查询所有购买的骰子游戏记录
+    const dicePurchases = await PurchaseRecord.findAll({
       where: {
         user_id,
         status: 'completed',
@@ -558,13 +559,23 @@ exports.getDiceUnlockStatus = async (req, res) => {
           { product_name: { [require('sequelize').Op.like]: '%Dice%' } },
           { product_name: { [require('sequelize').Op.like]: '%游戏%' } }
         ]
-      }
+      },
+      order: [['purchased_at', 'DESC']]
     });
+    
+    // 返回所有购买记录，让前端判断是否有未使用的
+    const purchases = dicePurchases.map(p => ({
+      id: p.id,
+      product_name: p.product_name,
+      purchased_at: p.purchased_at,
+      price: p.price
+    }));
     
     res.status(200).json({ 
       success: true, 
-      unlocked: !!dicePurchase,
-      purchasedAt: dicePurchase ? dicePurchase.purchased_at : null
+      unlocked: dicePurchases.length > 0,
+      hasPurchases: dicePurchases.length > 0,
+      purchases
     });
   } catch (error) {
     console.error('检查骰子解锁状态失败:', error);

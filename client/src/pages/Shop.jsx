@@ -66,7 +66,7 @@ const Shop = () => {
 
     try {
       setPurchasing(true);
-      await api.post('/shop/purchase', { product_id: product.id });
+      const purchaseResponse = await api.post('/shop/purchase', { product_id: product.id });
       toast.success('购买成功');
       // 刷新商品列表和用户信息
       fetchProducts();
@@ -75,13 +75,14 @@ const Shop = () => {
       
       // 检查是否购买的是骰子游戏解锁券
       if (product.name === '骰子游戏' || product.category === 'dice') {
-        // 解锁骰子游戏
+        // 解锁骰子游戏（不立即标记为已使用）
         localStorage.setItem('diceUnlocked', 'true');
         toast.success('骰子游戏已解锁，可以前往星球实验室使用！');
+        // 不立即标记为已使用，等待用户实际投掷后再标记
+      } else {
+        // 重新获取购买记录，确保localStorage中的记录是最新的
+        await fetchPurchaseRecords();
       }
-      
-      // 重新获取购买记录，确保localStorage中的记录是最新的
-      fetchPurchaseRecords();
     } catch (error) {
       console.error('购买失败:', error);
       toast.error('购买失败');
@@ -290,13 +291,42 @@ const Shop = () => {
                     const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
                     const isUsed = usedItems[record.id] || false;
                     
+                    const handleUseItem = (record) => {
+                      if (isUsed) return;
+                      
+                      // 检查是否是骰子游戏
+                      if (record.product_name === '骰子游戏') {
+                        // 解锁骰子游戏
+                        localStorage.setItem('diceUnlocked', 'true');
+                        toast.success('骰子游戏已解锁！');
+                      }
+                      
+                      // 标记物品已使用
+                      const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+                      usedItems[record.id] = true;
+                      localStorage.setItem('usedItems', JSON.stringify(usedItems));
+                      
+                      // 刷新购买记录显示
+                      fetchPurchaseRecords();
+                    };
+                    
                     return (
                       <div key={record.id} className="px-6 py-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-gray-900 dark:text-white">{record.product_name}</h4>
-                          <span className={`px-2 py-1 rounded-full text-sm ${isUsed ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
-                            {isUsed ? '已使用' : '未使用'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-sm ${isUsed ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
+                              {isUsed ? '已使用' : '未使用'}
+                            </span>
+                            {!isUsed && (
+                              <button
+                                onClick={() => handleUseItem(record)}
+                                className="px-3 py-1 text-sm bg-planet-purple text-white rounded-full hover:bg-planet-purple-dark transition-colors"
+                              >
+                                使用
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                           <span>购买时间: {new Date(record.purchased_at).toLocaleString()}</span>

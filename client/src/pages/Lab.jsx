@@ -112,7 +112,34 @@ const Lab = () => {
       
       // 检查骰子解锁状态（从后端获取，优先级高于localStorage）
       if (diceUnlockRes.data && diceUnlockRes.data.success) {
-        const unlocked = diceUnlockRes.data.unlocked;
+        // 保存后端返回的购买记录
+        if (diceUnlockRes.data.purchases && diceUnlockRes.data.purchases.length > 0) {
+          const allRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
+          // 合并后端记录到本地存储
+          diceUnlockRes.data.purchases.forEach(purchase => {
+            const exists = allRecords.find(r => r.id === purchase.id);
+            if (!exists) {
+              allRecords.push(purchase);
+            }
+          });
+          localStorage.setItem('purchaseRecords', JSON.stringify(allRecords));
+        }
+        
+        let unlocked = diceUnlockRes.data.unlocked;
+        
+        // 如果后端显示已解锁，再检查是否还有未使用的骰子游戏
+        if (unlocked) {
+          const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
+          const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+          const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
+          const hasUnused = diceRecords.some(record => !usedItems[record.id]);
+          
+          if (!hasUnused && diceRecords.length > 0) {
+            // 所有骰子游戏都已使用，自动锁定
+            unlocked = false;
+          }
+        }
+        
         setDiceUnlocked(unlocked);
         localStorage.setItem('diceUnlocked', String(unlocked));
       }
@@ -254,8 +281,23 @@ const Lab = () => {
     }
   };
 
+  const hasUnusedDiceGame = () => {
+    const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
+    const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+    const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
+    return diceRecords.some(record => !usedItems[record.id]);
+  };
+  
   const handleRollDice = async () => {
     if (isRolling) return;
+    
+    // 检查是否还有未使用的骰子游戏
+    if (!hasUnusedDiceGame()) {
+      toast.error('您的骰子游戏已用完，请前往星星小卖部购买！');
+      setDiceUnlocked(false);
+      localStorage.setItem('diceUnlocked', 'false');
+      return;
+    }
     
     setIsRolling(true);
     setRollResult(null);

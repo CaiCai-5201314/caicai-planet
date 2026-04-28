@@ -161,10 +161,22 @@ class StorageService {
         const token = putPolicy.uploadToken(mac);
         console.log('生成上传令牌成功');
 
-        // 配置东南亚区域
+        // 配置区域 - 新加坡/东南亚区域
         const config = new qiniu.conf.Config();
-        // 东南亚区域
-        config.zone = qiniu.zone.Zone_as0;
+        try {
+          // 存储空间位于新加坡，使用东南亚区域
+          config.zone = qiniu.zone.Zone_as0; // 东南亚区域（新加坡）
+          console.log('使用东南亚区域配置（新加坡）');
+        } catch (e) {
+          console.error('区域配置失败:', e);
+          // 如果东南亚区域配置失败，尝试自动检测
+          try {
+            config.zone = qiniu.zone.Zone_z0; // 华东区域作为备用
+            console.log('回退到华东区域配置');
+          } catch (fallbackError) {
+            console.error('备用区域配置也失败:', fallbackError);
+          }
+        }
 
         const formUploader = new qiniu.form_up.FormUploader(config);
         const putExtra = new qiniu.form_up.PutExtra();
