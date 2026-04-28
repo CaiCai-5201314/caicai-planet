@@ -542,6 +542,36 @@ exports.getDiceRecords = async (req, res) => {
   }
 };
 
+// 检查用户是否解锁了骰子游戏
+exports.getDiceUnlockStatus = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    
+    const { PurchaseRecord } = require('../models');
+    
+    const dicePurchase = await PurchaseRecord.findOne({
+      where: {
+        user_id,
+        status: 'completed',
+        [require('sequelize').Op.or]: [
+          { product_name: { [require('sequelize').Op.like]: '%骰子%' } },
+          { product_name: { [require('sequelize').Op.like]: '%Dice%' } },
+          { product_name: { [require('sequelize').Op.like]: '%游戏%' } }
+        ]
+      }
+    });
+    
+    res.status(200).json({ 
+      success: true, 
+      unlocked: !!dicePurchase,
+      purchasedAt: dicePurchase ? dicePurchase.purchased_at : null
+    });
+  } catch (error) {
+    console.error('检查骰子解锁状态失败:', error);
+    res.status(500).json({ success: false, message: '检查骰子解锁状态失败' });
+  }
+};
+
 // 打卡相关功能
 exports.getCheckInStatus = async (req, res) => {
   try {

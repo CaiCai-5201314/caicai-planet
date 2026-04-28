@@ -69,7 +69,7 @@ const Lab = () => {
       setLoading(true);
       
       // 并行请求数据
-      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes, settingsRes, checkInRes, appreciationRes] = await Promise.all([
+      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes, settingsRes, checkInRes, appreciationRes, diceUnlockRes] = await Promise.all([
         api.get('/lab/events'),
         api.get('/lab/achievements'),
         api.get(`/lab/users/${user.id}/achievements`),
@@ -77,7 +77,8 @@ const Lab = () => {
         api.get('/lab/qa'),
         api.get('/lab/settings'),
         api.get('/lab/checkin'),
-        api.get('/lab/appreciation')
+        api.get('/lab/appreciation'),
+        api.get('/lab/dice/unlock-status')
       ]);
 
       const fetchedEvents = eventsRes.data.events || [];
@@ -107,6 +108,13 @@ const Lab = () => {
       // 更新赞赏码配置
       if (appreciationRes.data) {
         setAppreciationCode(appreciationRes.data);
+      }
+      
+      // 检查骰子解锁状态（从后端获取，优先级高于localStorage）
+      if (diceUnlockRes.data && diceUnlockRes.data.success) {
+        const unlocked = diceUnlockRes.data.unlocked;
+        setDiceUnlocked(unlocked);
+        localStorage.setItem('diceUnlocked', String(unlocked));
       }
       
       // 检查新活动并显示通知

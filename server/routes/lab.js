@@ -39,6 +39,7 @@ router.put('/settings', auth, adminOnly, labController.updateSettings);
 // 骰子游戏记录相关路由
 router.post('/dice/records', auth, labController.saveDiceRecord);
 router.get('/dice/records', auth, adminOnly, labController.getDiceRecords);
+router.get('/dice/unlock-status', auth, labController.getDiceUnlockStatus);
 
 // 打卡相关路由
 router.get('/checkin', auth, labController.getCheckInStatus);

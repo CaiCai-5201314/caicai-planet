@@ -43,42 +43,39 @@ class StorageService {
       console.log('开始上传文件:', { originalname: file.originalname, size: file.size, path: file.path });
       console.log('文件夹:', folder);
       
-      // 1. 先存储到本地
-      console.log('存储到本地...');
-      const localUrl = this.uploadToLocal(file, folder);
-      console.log('本地存储上传成功，URL:', localUrl);
+      const useQiniuStorage = this.useQiniu();
+      console.log('是否使用七牛云存储:', useQiniuStorage);
       
-      // 2. 尝试上传到七牛云（带压缩）
-      console.log('上传到七牛云...');
-      try {
-        const qiniuUrl = await this.uploadToQiniu(file, folder);
-        console.log('七牛云上传成功，URL:', qiniuUrl);
-        // 返回本地 URL（优先本地）
-        return localUrl;
-      } catch (qiniuError) {
-        console.error('七牛云上传失败，返回本地存储 URL:', qiniuError);
-        // 七牛云上传失败，返回本地存储 URL
+      if (useQiniuStorage) {
+        // 优先使用七牛云存储
+        console.log('使用七牛云存储...');
+        try {
+          const qiniuUrl = await this.uploadToQiniu(file, folder);
+          console.log('七牛云上传成功，URL:', qiniuUrl);
+          // 同时保存到本地作为备份
+          try {
+            this.uploadToLocal(file, folder);
+            console.log('本地备份成功');
+          } catch (e) {
+            console.error('本地备份失败:', e);
+          }
+          return qiniuUrl;
+        } catch (qiniuError) {
+          console.error('七牛云上传失败，回退到本地存储:', qiniuError);
+          const localUrl = this.uploadToLocal(file, folder);
+          console.log('本地存储上传成功，URL:', localUrl);
+          return localUrl;
+        }
+      } else {
+        // 使用本地存储
+        console.log('使用本地存储...');
+        const localUrl = this.uploadToLocal(file, folder);
+        console.log('本地存储上传成功，URL:', localUrl);
         return localUrl;
       }
     } catch (error) {
       console.error('上传文件时出错:', error);
-      // 回退到本地存储
-      try {
-        const localUrl = this.uploadToLocal(file, folder);
-        console.log('本地存储上传成功，URL:', localUrl);
-        return localUrl;
-      } catch (localError) {
-        console.error('本地存储上传失败:', localError);
-        // 本地存储失败，尝试七牛云
-        try {
-          const qiniuUrl = await this.uploadToQiniu(file, folder);
-          console.log('七牛云上传成功，URL:', qiniuUrl);
-          return qiniuUrl;
-        } catch (qiniuError) {
-          console.error('七牛云上传也失败:', qiniuError);
-          throw new Error('文件上传失败');
-        }
-      }
+      throw new Error('文件上传失败');
     }
   }
 
