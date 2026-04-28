@@ -33,6 +33,15 @@ exports.createEvent = async (req, res) => {
   try {
     const { title, description, start_time, end_time, reward_type, reward_value } = req.body;
     
+    // 处理reward_value，确保它是有效的值
+    let processedRewardValue = reward_value;
+    if (processedRewardValue === undefined || processedRewardValue === null || processedRewardValue === '') {
+      processedRewardValue = 0;
+    } else if (reward_type !== 'custom') {
+      // 对于非自定义奖励类型，确保值是数字
+      processedRewardValue = parseInt(processedRewardValue) || 0;
+    }
+    
     const event = await VirtualEvent.create({
       title,
       description,
@@ -40,7 +49,7 @@ exports.createEvent = async (req, res) => {
       end_time,
       status: new Date(start_time) > new Date() ? 'upcoming' : (new Date(end_time) < new Date() ? 'ended' : 'active'),
       reward_type,
-      reward_value
+      reward_value: processedRewardValue
     });
     
     res.status(201).json({ success: true, event });
@@ -55,12 +64,22 @@ exports.updateEvent = async (req, res) => {
     const { id } = req.params;
     const { title, description, start_time, end_time, reward_type, reward_value } = req.body;
     
+    console.log('更新活动请求数据:', { id, title, description: description ? description.substring(0, 100) + '...' : description, start_time, end_time, reward_type, reward_value });
+    
     const event = await VirtualEvent.findByPk(id);
     if (!event) {
       return res.status(404).json({ success: false, message: '活动不存在' });
     }
     
     const status = new Date(start_time) > new Date() ? 'upcoming' : (new Date(end_time) < new Date() ? 'ended' : 'active');
+    
+    // 处理reward_value，确保它是字符串类型
+    let processedRewardValue = reward_value;
+    if (processedRewardValue === undefined || processedRewardValue === null) {
+      processedRewardValue = '';
+    } else if (typeof processedRewardValue !== 'string') {
+      processedRewardValue = processedRewardValue.toString();
+    }
     
     await event.update({
       title,
@@ -69,13 +88,14 @@ exports.updateEvent = async (req, res) => {
       end_time,
       status,
       reward_type,
-      reward_value
+      reward_value: processedRewardValue
     });
     
     res.status(200).json({ success: true, event });
   } catch (error) {
-    console.error('更新虚拟活动失败:', error);
-    res.status(500).json({ success: false, message: '更新虚拟活动失败' });
+    console.error('更新虚拟活动失败:', error.message);
+    console.error('错误堆栈:', error.stack);
+    res.status(500).json({ success: false, message: '更新活动失败' });
   }
 };
 
@@ -118,10 +138,14 @@ exports.deleteEvent = async (req, res) => {
 exports.participateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { user_id } = req.body;
+    // 从req.user中获取用户ID，而不是从req.body中获取
+    const user_id = req.user.id;
+    
+    console.log(`[participateEvent] 用户 ${user_id} 尝试参与活动 ${id}`);
     
     const event = await VirtualEvent.findByPk(id);
     if (!event) {
+      console.log(`[participateEvent] 活动 ${id} 不存在`);
       return res.status(404).json({ success: false, message: '活动不存在' });
     }
     
@@ -131,10 +155,12 @@ exports.participateEvent = async (req, res) => {
     });
     
     if (existingParticipant) {
+      console.log(`[participateEvent] 用户 ${user_id} 已经参与过活动 ${id}`);
       return res.status(400).json({ success: false, message: '已经参与过此活动' });
     }
     
     // 创建参与记录
+    console.log(`[participateEvent] 创建参与者记录: user_id=${user_id}, event_id=${id}`);
     const participant = await EventParticipant.create({
       user_id,
       event_id: id,
@@ -142,9 +168,20 @@ exports.participateEvent = async (req, res) => {
       score: 0
     });
     
-    res.status(201).json({ success: true, participant, message: '参与活动成功，请实际提交后等待管理员审核发放月球分' });
+    console.log(`[participateEvent] 参与者记录创建成功: ${JSON.stringify(participant.toJSON())}`);
+    
+    // 根据奖励类型生成不同的消息
+    let message = '参与活动成功';
+    if (event.reward_type === 'custom' && event.reward_value) {
+      message = `参与活动成功，${event.reward_value}`;
+    } else if (event.reward_type && event.reward_value) {
+      message = `参与活动成功，获得${event.reward_value}${event.reward_type === 'points' ? '月球分' : event.reward_type === 'exp' ? '经验值' : event.reward_type === 'achievement_points' ? '成就点' : event.reward_type === 'badge' ? '特殊徽章' : event.reward_type}`;
+    }
+    
+    res.status(201).json({ success: true, participant, message });
   } catch (error) {
-    console.error('参与活动失败:', error);
+    console.error('[participateEvent] 参与活动失败:', error.message);
+    console.error('[participateEvent] 错误堆栈:', error.stack);
     res.status(500).json({ success: false, message: '参与活动失败' });
   }
 };
@@ -158,7 +195,7 @@ exports.getUserEvents = async (req, res) => {
       include: [{ model: VirtualEvent, as: 'event' }]
     });
     
-    res.status(200).json({ success: true, participants });
+    res.status(200).json({ success: true, events: participants });
   } catch (error) {
     console.error('获取用户活动失败:', error);
     res.status(500).json({ success: false, message: '获取用户活动失败' });
@@ -372,12 +409,13 @@ exports.deleteQa = async (req, res) => {
 
 exports.getEventParticipants = async (req, res) => {
   try {
-    const { eventId } = req.params;
+    const { id } = req.params;
     
     const participants = await EventParticipant.findAll({
-      where: { event_id: eventId },
+      where: { event_id: id },
       include: [{
         model: User,
+        as: 'User',
         attributes: ['id', 'uid', 'username', 'email']
       }]
     });
@@ -409,7 +447,6 @@ let labSettings = {
   customMessage: '欢迎来到星球实验室！',
   // 骰子游戏设置
   diceEnabled: true,
-  diceMaxRollsPerHour: 1,
   diceSuccessReward: 0,
   diceSuccessMessage: '恭喜你！投中了 {value} 点，允许做你想做的事情！',
   diceFailureMessage: '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'
@@ -429,7 +466,7 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
   try {
-    const { labEnabled, eventMaxParticipants, achievementThreshold, rewardMultiplier, customMessage, diceEnabled, diceMaxRollsPerHour, diceSuccessReward, diceSuccessMessage, diceFailureMessage } = req.body;
+    const { labEnabled, eventMaxParticipants, achievementThreshold, rewardMultiplier, customMessage, diceEnabled, diceSuccessReward, diceSuccessMessage, diceFailureMessage } = req.body;
     
     labSettings = {
       labEnabled: labEnabled !== undefined ? labEnabled : labSettings.labEnabled,
@@ -439,7 +476,6 @@ exports.updateSettings = async (req, res) => {
       customMessage: customMessage !== undefined ? customMessage : labSettings.customMessage,
       // 骰子游戏设置
       diceEnabled: diceEnabled !== undefined ? diceEnabled : labSettings.diceEnabled,
-      diceMaxRollsPerHour: diceMaxRollsPerHour !== undefined ? diceMaxRollsPerHour : labSettings.diceMaxRollsPerHour,
       diceSuccessReward: diceSuccessReward !== undefined ? diceSuccessReward : labSettings.diceSuccessReward,
       diceSuccessMessage: diceSuccessMessage !== undefined ? diceSuccessMessage : labSettings.diceSuccessMessage,
       diceFailureMessage: diceFailureMessage !== undefined ? diceFailureMessage : labSettings.diceFailureMessage
@@ -489,5 +525,208 @@ exports.getDiceRecords = async (req, res) => {
   } catch (error) {
     console.error('获取骰子游戏记录失败:', error);
     res.status(500).json({ success: false, message: '获取骰子游戏记录失败' });
+  }
+};
+
+// 打卡相关功能
+exports.getCheckInStatus = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const lastCheckIn = await MoonPointLog.findOne({
+      where: {
+        user_id,
+        reason_type: 'check_in',
+        created_at: {
+          [db.Sequelize.Op.gte]: today
+        }
+      },
+      order: [['created_at', 'DESC']]
+    });
+    
+    const hasCheckedIn = !!lastCheckIn;
+    
+    let streak = 0;
+    if (hasCheckedIn) {
+      let checkDate = new Date(today);
+      while (checkDate >= new Date('2024-01-01')) {
+        const checkRecord = await MoonPointLog.findOne({
+          where: {
+            user_id,
+            reason_type: 'check_in',
+            created_at: {
+              [db.Sequelize.Op.gte]: checkDate,
+              [db.Sequelize.Op.lt]: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
+            }
+          }
+        });
+        
+        if (!checkRecord) break;
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+    }
+    
+    res.status(200).json({
+      success: true,
+      hasCheckedIn,
+      streak,
+      todayPoints: hasCheckedIn ? (lastCheckIn ? lastCheckIn.points : 0) : 0,
+      lastCheckInDate: lastCheckIn ? lastCheckIn.created_at : null
+    });
+  } catch (error) {
+    console.error('获取打卡状态失败:', error);
+    res.status(500).json({ success: false, message: '获取打卡状态失败' });
+  }
+};
+
+exports.checkIn = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const existingCheckIn = await MoonPointLog.findOne({
+      where: {
+        user_id,
+        reason_type: 'check_in',
+        created_at: {
+          [db.Sequelize.Op.gte]: today
+        }
+      }
+    });
+    
+    if (existingCheckIn) {
+      return res.status(400).json({ success: false, message: '今日已打卡' });
+    }
+    
+    let streak = 0;
+    let checkDate = new Date(today);
+    checkDate.setDate(checkDate.getDate() - 1);
+    
+    while (checkDate >= new Date('2024-01-01')) {
+      const checkRecord = await MoonPointLog.findOne({
+        where: {
+          user_id,
+          reason_type: 'check_in',
+          created_at: {
+            [db.Sequelize.Op.gte]: checkDate,
+            [db.Sequelize.Op.lt]: new Date(checkDate.getTime() + 24 * 60 * 60 * 1000)
+          }
+        }
+      });
+      
+      if (!checkRecord) break;
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+    
+    streak++;
+    
+    let basePoints = 5;
+    let bonusPoints = 0;
+    
+    if (streak >= 30) {
+      bonusPoints = 100;
+    } else if (streak >= 7) {
+      bonusPoints = 30;
+    } else if (streak >= 3) {
+      bonusPoints = 10;
+    }
+    
+    const totalPoints = basePoints + bonusPoints;
+    
+    await sequelize.transaction(async (t) => {
+      await User.increment({ moon_points: totalPoints }, { where: { id: user_id }, transaction: t });
+      
+      await MoonPointLog.create({
+        user_id,
+        points: totalPoints,
+        reason_type: 'check_in',
+        reason: `每日打卡${streak > 1 ? `(连续${streak}天)` : ''}`,
+        transaction: t
+      });
+    });
+    
+    let message = `打卡成功！获得 ${totalPoints} 月球分`;
+    if (bonusPoints > 0) {
+      message += `（基础 ${basePoints} + 连续打卡奖励 ${bonusPoints}）`;
+    }
+    
+    res.status(200).json({
+      success: true,
+      message,
+      points: totalPoints,
+      streak
+    });
+  } catch (error) {
+    console.error('打卡失败:', error);
+    res.status(500).json({ success: false, message: '打卡失败' });
+  }
+};
+
+// 赞赏码相关功能
+let appreciationConfig = {
+  qrCodeUrl: '',
+  alipayQrCodeUrl: '',
+  wechatQrCodeUrl: '',
+  enabled: true,
+  description: '如果你喜欢我们的服务，可以请我们喝杯咖啡！'
+};
+
+exports.getAppreciationConfig = async (req, res) => {
+  try {
+    res.status(200).json(appreciationConfig);
+  } catch (error) {
+    console.error('获取赞赏码配置失败:', error);
+    res.status(500).json({ success: false, message: '获取赞赏码配置失败' });
+  }
+};
+
+exports.updateAppreciationConfig = async (req, res) => {
+  try {
+    const { qrCodeUrl, alipayQrCodeUrl, wechatQrCodeUrl, enabled, description } = req.body;
+    
+    if (qrCodeUrl !== undefined) appreciationConfig.qrCodeUrl = qrCodeUrl;
+    if (alipayQrCodeUrl !== undefined) appreciationConfig.alipayQrCodeUrl = alipayQrCodeUrl;
+    if (wechatQrCodeUrl !== undefined) appreciationConfig.wechatQrCodeUrl = wechatQrCodeUrl;
+    if (enabled !== undefined) appreciationConfig.enabled = enabled;
+    if (description !== undefined) appreciationConfig.description = description;
+    
+    res.status(200).json({ success: true, message: '赞赏码配置更新成功', config: appreciationConfig });
+  } catch (error) {
+    console.error('更新赞赏码配置失败:', error);
+    res.status(500).json({ success: false, message: '更新赞赏码配置失败' });
+  }
+};
+
+exports.uploadAppreciationImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: '请选择要上传的文件' });
+    }
+    
+    const { type } = req.query;
+    const fileUrl = `/uploads/${type || 'posts'}/${req.file.filename}`;
+    
+    res.status(200).json({ 
+      success: true, 
+      message: '上传成功',
+      url: fileUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('上传赞赏码图片失败:', error);
+    res.status(500).json({ success: false, message: '上传失败' });
   }
 };

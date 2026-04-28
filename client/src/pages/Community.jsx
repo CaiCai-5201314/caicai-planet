@@ -110,17 +110,8 @@ export default function Community() {
       
       <div className="pt-20 pb-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              <FiArrowLeft size={20} />
-              <span>返回</span>
-            </button>
-          </div>
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">社区</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">星球广场</h1>
             <p className="text-gray-600 dark:text-gray-400">发现有趣的文章，参与讨论交流</p>
           </div>
 
@@ -303,7 +294,7 @@ export default function Community() {
             <div className="lg:w-1/4 space-y-6">
               {!user ? (
                 <div className="bg-gradient-to-br from-planet-purple to-planet-pink rounded-2xl p-6 text-white">
-                  <h3 className="font-bold text-xl mb-2">加入社区</h3>
+                  <h3 className="font-bold text-xl mb-2">加入星球广场</h3>
                   <p className="text-white/80 text-sm mb-4">
                     分享你的知识和经验，与志同道合的朋友交流
                   </p>
@@ -318,7 +309,7 @@ export default function Community() {
                 <div className="bg-gradient-to-br from-planet-purple to-planet-pink rounded-2xl p-6 text-white">
                   <h3 className="font-bold text-xl mb-2">发布文章</h3>
                   <p className="text-white/80 text-sm mb-4">
-                    分享你的知识和经验，与社区成员交流
+                    分享你的知识和经验，与星球广场成员交流
                   </p>
                   <Link
                     to="/create-post"

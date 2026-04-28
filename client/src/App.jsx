@@ -4,11 +4,27 @@ import { useAuthStore } from './store/authStore'
 import sessionChecker from './utils/sessionChecker'
 import toast from 'react-hot-toast'
 
-import Home from './pages/Home'
-import Login from './Login_Management/Login'
-import Register from './Login_Management/Register'
-import ForgotPassword from './Login_Management/ForgotPassword'
-import AdminLogin from './Login_Management/AdminLogin'
+// 全局样式
+const globalStyles = `
+  /* 限制活动描述中的图片大小 */
+  [dangerouslySetInnerHTML] img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+`;
+
+// 全局样式组件
+const GlobalStyles = () => (
+  <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
+);
+
+import Home from './pages/Home.jsx'
+import Login from './Login_Management/Login.jsx'
+import Register from './Login_Management/Register.jsx'
+import ForgotPassword from './Login_Management/ForgotPassword.jsx'
+import AdminLogin from './Login_Management/AdminLogin.jsx'
 import Community from './pages/Community'
 import Friends from './pages/Friends'
 import About from './pages/About'
@@ -31,6 +47,7 @@ import Settings from './pages/Settings'
 import PostDetail from './pages/PostDetail'
 import CreatePost from './pages/CreatePost'
 import EditPost from './pages/EditPost'
+import Shop from './pages/Shop.jsx'
 import AdminDashboard from './Admin_Management/Dashboard'
 import Notifications from './pages/Notifications'
 import Terms from './pages/Terms'
@@ -143,7 +160,7 @@ function ShortLinkHandler() {
         // 增加点击次数
         console.log('增加短链接点击次数');
         const token = localStorage.getItem('token');
-        await fetch(`/share/friend-link/${shareCode}`, {
+        await fetch(`/api/share/friend-link/${shareCode}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -298,6 +315,7 @@ function App() {
 
   return (
     <>
+      <GlobalStyles />
       <Announcement />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -397,6 +415,11 @@ function App() {
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100"><div className="text-planet-purple text-2xl">加载中...</div></div>}>
               <Lab />
             </Suspense>
+          </AuthProtected>
+        } />
+        <Route path="/shop" element={
+          <AuthProtected>
+            <Shop />
           </AuthProtected>
         } />
         <Route path="/post/:id" element={<PostDetail />} />

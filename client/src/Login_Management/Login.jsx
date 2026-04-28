@@ -64,7 +64,7 @@ export default function Login() {
               <span className="text-2xl">🚀</span>
             </div>
             <div>
-              <div className="font-semibold">加入社区</div>
+              <div className="font-semibold">加入星球广场</div>
               <div className="text-white/70 text-sm">与志同道合的朋友交流</div>
             </div>
           </div>

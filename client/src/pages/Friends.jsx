@@ -33,7 +33,7 @@ export default function Friends() {
       const response = await api.get('/friend-links');
       setFriendLinks(response.data.friendLinks);
     } catch (error) {
-      console.error('获取友链失败:', error);
+      console.error('获取星际传送门失败:', error);
     } finally {
       setLoading(false);
     }
@@ -43,7 +43,7 @@ export default function Friends() {
     e.preventDefault();
     try {
       await api.post('/friend-links/apply', applyForm);
-      toast.success('友链申请已提交，等待审核');
+      toast.success('星际传送门申请已提交，等待审核');
       setShowApplyModal(false);
       setApplyForm({ 
         name: '', 
@@ -64,7 +64,7 @@ export default function Friends() {
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">菜菜的朋友们</h1>
             <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-              这里汇集了志同道合的朋友们，欢迎访问他们的网站，也欢迎你申请加入我们的友链
+              这里汇集了志同道合的朋友们，欢迎访问他们的网站，也欢迎你申请加入我们的星际传送门
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export default function Friends() {
               className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-planet-purple to-planet-pink text-white rounded-full font-medium hover:shadow-lg transition-shadow"
             >
               <FiPlus size={18} />
-              <span>申请友链</span>
+              <span>申请星际传送门</span>
             </button>
           </div>
 
@@ -91,8 +91,8 @@ export default function Friends() {
           ) : friendLinks.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
               <div className="text-6xl mb-4">🌐</div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">暂无友链</h3>
-              <p className="text-gray-600 dark:text-gray-400">还没有添加任何友链</p>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">暂无星际传送门</h3>
+              <p className="text-gray-600 dark:text-gray-400">还没有添加任何星际传送门</p>
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -144,7 +144,7 @@ export default function Friends() {
       {showApplyModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-700">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">申请友链</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">申请星际传送门</h2>
             <form onSubmit={handleApply} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

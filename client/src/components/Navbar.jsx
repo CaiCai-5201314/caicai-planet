@@ -11,13 +11,14 @@ import remarkGfm from 'remark-gfm';
 
 const baseNavItems = [
   { label: '首页', path: '/' },
-  { label: '社区', path: '/community' },
-  { label: '友链', path: '/friend-links' },
+  { label: '星球广场', path: '/community' },
+  { label: '星际传送门', path: '/friend-links' },
 ];
 
 const authNavItems = [
   { label: '月球', path: '/tasks' },
   { label: '星球实验室', path: '/lab' },
+  { label: '星星小卖部', path: '/shop' },
 ];
 
 export default function Navbar() {

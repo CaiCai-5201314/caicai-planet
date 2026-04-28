@@ -5,12 +5,12 @@ import api from '../services/api';
 function Footer() {
   const [configs, setConfigs] = useState({
     footerCopyright: '© 2024 菜菜星球. 保留所有权利.',
-    footerAbout: '菜菜星球是一个分享生活、技术和创意的社区平台。',
+    footerAbout: '菜菜星球是一个分享生活、技术和创意的星球广场平台。',
     footerLinks: [
       { name: '首页', url: '/' },
       { name: '关于我们', url: '/about' },
-      { name: '社区', url: '/community' },
-      { name: '友链', url: '/friend-links' }
+      { name: '星球广场', url: '/community' },
+      { name: '星际传送门', url: '/friend-links' }
     ],
     footerSocial: [
       { name: 'GitHub', url: 'https://github.com', icon: 'github' },

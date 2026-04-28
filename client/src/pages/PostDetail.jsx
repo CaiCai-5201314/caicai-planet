@@ -254,7 +254,7 @@ export default function PostDetail() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link to="/community" className="inline-flex items-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 mb-6">
             <FiArrowLeft className="mr-2" />
-            返回社区
+            返回星球广场
           </Link>
 
           <article className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">

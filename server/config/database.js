@@ -18,8 +18,11 @@ module.exports = {
       acquire: 30000,
       idle: 10000
     },
+    timezone: '+08:00',
     dialectOptions: {
-      charset: 'utf8mb4'
+      charset: 'utf8mb4',
+      dateStrings: true,
+      typeCast: true
     }
   },
   production: {
@@ -36,8 +39,11 @@ module.exports = {
       acquire: 30000,
       idle: 10000
     },
+    timezone: '+08:00',
     dialectOptions: {
-      charset: 'utf8mb4'
+      charset: 'utf8mb4',
+      dateStrings: true,
+      typeCast: true
     }
   }
 };

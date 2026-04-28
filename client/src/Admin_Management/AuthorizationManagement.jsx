@@ -26,12 +26,12 @@ function AuthorizationManagement() {
       ]
     },
     {
-      label: '用户与社区',
+      label: '用户与星球广场',
       permissions: [
         { key: 'userManagement', label: '用户管理' },
         { key: 'postManagement', label: '文章管理' },
         { key: 'commentManagement', label: '评论管理' },
-        { key: 'friendLinkManagement', label: '友链管理' },
+        { key: 'friendLinkManagement', label: '星际传送门管理' },
         { key: 'bannedWordManagement', label: '违禁词管理' }
       ]
     },

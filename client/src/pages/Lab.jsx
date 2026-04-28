@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { FiSettings, FiCalendar, FiAward, FiUser, FiHelpCircle } from 'react-icons/fi';
+import { FiSettings, FiCalendar, FiAward, FiUser, FiHelpCircle, FiCheckCircle, FiCoffee } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ const Lab = () => {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isViewingEvent, setIsViewingEvent] = useState(false);
+  const [participatedEvents, setParticipatedEvents] = useState(new Set());
   const [newEvents, setNewEvents] = useState([]);
   const [showEventNotification, setShowEventNotification] = useState(false);
   // 骰子游戏状态
@@ -26,20 +27,31 @@ const Lab = () => {
   const [difficulty, setDifficulty] = useState('medium'); // easy, medium, hard
   const [targetNumbers, setTargetNumbers] = useState([]);
   const [rollResult, setRollResult] = useState(null); // null, success, failure
-  const [lastRollTime, setLastRollTime] = useState(() => {
-    // 从localStorage中读取最后投掷时间
-    const storedTime = localStorage.getItem('diceLastRollTime');
-    return storedTime ? parseInt(storedTime) : 0;
+  // 骰子游戏解锁状态
+  const [diceUnlocked, setDiceUnlocked] = useState(() => {
+    // 从localStorage中读取解锁状态
+    const storedUnlocked = localStorage.getItem('diceUnlocked');
+    return storedUnlocked === 'true';
   });
   // 骰子游戏设置
   const [diceEnabled, setDiceEnabled] = useState(true);
   const [diceSuccessMessage, setDiceSuccessMessage] = useState('恭喜你！投中了 {value} 点，允许做你想做的事情！');
   const [diceFailureMessage, setDiceFailureMessage] = useState('很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！');
-  const [diceMaxRollsPerHour, setDiceMaxRollsPerHour] = useState(1);
-  const [diceRollCount, setDiceRollCount] = useState(() => {
-    // 从localStorage中读取投掷次数
-    const storedCount = localStorage.getItem('diceRollCount');
-    return storedCount ? parseInt(storedCount) : 0;
+  // 打卡状态
+  const [checkInStatus, setCheckInStatus] = useState({
+    hasCheckedIn: false,
+    streak: 0,
+    todayPoints: 0,
+    lastCheckInDate: null
+  });
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  // 赞赏码配置
+  const [appreciationCode, setAppreciationCode] = useState({
+    qrCodeUrl: '',
+    alipayQrCodeUrl: '',
+    wechatQrCodeUrl: '',
+    enabled: true,
+    description: '如果你喜欢我们的服务，可以请我们喝杯咖啡！'
   });
 
   useEffect(() => {
@@ -57,13 +69,15 @@ const Lab = () => {
       setLoading(true);
       
       // 并行请求数据
-      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes, settingsRes] = await Promise.all([
+      const [eventsRes, achievementsRes, userAchievementsRes, userEventsRes, qaRes, settingsRes, checkInRes, appreciationRes] = await Promise.all([
         api.get('/lab/events'),
         api.get('/lab/achievements'),
         api.get(`/lab/users/${user.id}/achievements`),
         api.get(`/lab/users/${user.id}/events`),
         api.get('/lab/qa'),
-        api.get('/lab/settings')
+        api.get('/lab/settings'),
+        api.get('/lab/checkin'),
+        api.get('/lab/appreciation')
       ]);
 
       const fetchedEvents = eventsRes.data.events || [];
@@ -78,7 +92,21 @@ const Lab = () => {
         setDiceEnabled(settingsRes.data.settings.diceEnabled !== false);
         setDiceSuccessMessage(settingsRes.data.settings.diceSuccessMessage || '恭喜你！投中了 {value} 点，允许做你想做的事情！');
         setDiceFailureMessage(settingsRes.data.settings.diceFailureMessage || '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！');
-        setDiceMaxRollsPerHour(settingsRes.data.settings.diceMaxRollsPerHour || 1);
+      }
+      
+      // 更新打卡状态
+      if (checkInRes.data) {
+        setCheckInStatus({
+          hasCheckedIn: checkInRes.data.hasCheckedIn || false,
+          streak: checkInRes.data.streak || 0,
+          todayPoints: checkInRes.data.todayPoints || 0,
+          lastCheckInDate: checkInRes.data.lastCheckInDate || null
+        });
+      }
+      
+      // 更新赞赏码配置
+      if (appreciationRes.data) {
+        setAppreciationCode(appreciationRes.data);
       }
       
       // 检查新活动并显示通知
@@ -116,12 +144,21 @@ const Lab = () => {
 
   const handleParticipateEvent = async (eventId) => {
     try {
+      console.log(`[Lab.jsx] 用户 ${user.id} 尝试参与活动 ${eventId}`);
       const response = await api.post(`/lab/events/${eventId}/participate`, { user_id: user.id });
-      const successMessage = response.data?.message || '参与活动成功';
-      toast.success(successMessage);
-      fetchData(); // 重新获取数据
+      console.log(`[Lab.jsx] 参与活动成功:`, response.data);
+      
+      if (response.data.success) {
+        const successMessage = response.data?.message || '参与活动成功';
+        toast.success(successMessage);
+        // 将参与的活动ID添加到集合中
+        setParticipatedEvents(prev => new Set(prev).add(eventId));
+        fetchData(); // 重新获取数据
+      } else {
+        toast.error(response.data?.message || '参与活动失败');
+      }
     } catch (error) {
-      console.error('参与活动失败:', error);
+      console.error('参与活动失败:', error.response?.data || error.message);
       const errorMessage = error.response?.data?.message || '参与活动失败';
       toast.error(errorMessage);
     }
@@ -141,7 +178,7 @@ const Lab = () => {
   };
 
   const isParticipated = (eventId) => {
-    return userEvents.some(ue => ue.event_id === eventId);
+    return participatedEvents.has(eventId) || userEvents.some(ue => ue.event_id === eventId);
   };
   
   const handleViewEvent = (event) => {
@@ -180,28 +217,37 @@ const Lab = () => {
   }, [difficulty]);
   
   // 骰子投掷函数
+  // 手动打卡函数
+  const handleCheckIn = async () => {
+    if (isCheckingIn || checkInStatus.hasCheckedIn) return;
+    
+    setIsCheckingIn(true);
+    
+    try {
+      const response = await api.post('/lab/checkin');
+      
+      if (response.data.success) {
+        toast.success(response.data.message || '打卡成功！');
+        setCheckInStatus(prev => ({
+          ...prev,
+          hasCheckedIn: true,
+          streak: response.data.streak || prev.streak + 1,
+          todayPoints: response.data.points || 0,
+          lastCheckInDate: new Date().toISOString()
+        }));
+      } else {
+        toast.error(response.data.message || '打卡失败');
+      }
+    } catch (error) {
+      console.error('打卡失败:', error);
+      toast.error(error.response?.data?.message || '打卡失败');
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
+
   const handleRollDice = async () => {
     if (isRolling) return;
-    
-    // 检查是否在一小时内已经投掷过多次
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-    
-    // 检查是否进入了新的小时
-    const currentHour = Math.floor(now / oneHour);
-    const lastHour = Math.floor(lastRollTime / oneHour);
-    
-    // 如果进入了新的小时，重置投掷次数
-    if (currentHour !== lastHour) {
-      setDiceRollCount(0);
-      localStorage.setItem('diceRollCount', '0');
-    }
-    
-    // 检查是否达到每小时最大投掷次数
-    if (diceRollCount >= diceMaxRollsPerHour) {
-      toast.error(`每小时最多只能投掷 ${diceMaxRollsPerHour} 次`);
-      return;
-    }
     
     setIsRolling(true);
     setRollResult(null);
@@ -223,14 +269,6 @@ const Lab = () => {
         // 显示最终结果
         setDiceValue(randomValue);
         setIsRolling(false);
-        setLastRollTime(now);
-        // 存储最后投掷时间到localStorage
-        localStorage.setItem('diceLastRollTime', now.toString());
-        
-        // 增加投掷次数
-        const newRollCount = diceRollCount + 1;
-        setDiceRollCount(newRollCount);
-        localStorage.setItem('diceRollCount', newRollCount.toString());
         
         // 判断是否投中目标数字
         const success = targetNumbers.includes(randomValue);
@@ -267,6 +305,30 @@ const Lab = () => {
             .replace('{target}', targetNumbers.join(', '));
           toast.error(failureMessage);
         }
+        
+        // 标记最近一次购买的骰子游戏为已使用
+        const markAsUsed = () => {
+          // 获取购买记录
+          const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
+          // 找到最近一次购买的骰子游戏
+          const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
+          if (diceRecords.length > 0) {
+            // 按购买时间排序，找到最新的
+            const latestRecord = diceRecords.sort((a, b) => new Date(b.purchased_at) - new Date(a.purchased_at))[0];
+            // 更新使用状态
+            const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+            usedItems[latestRecord.id] = true;
+            localStorage.setItem('usedItems', JSON.stringify(usedItems));
+          }
+        };
+        
+        markAsUsed();
+        
+        // 延迟锁定骰子游戏，让用户有时间看到结果
+        setTimeout(() => {
+          setDiceUnlocked(false);
+          localStorage.setItem('diceUnlocked', 'false');
+        }, 3000); // 3秒后锁定
       }
     }, 100);
   };
@@ -332,6 +394,26 @@ const Lab = () => {
                 常见问题
               </button>
               <button
+                onClick={() => setActiveTab('checkin')}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                  activeTab === 'checkin'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                每日打卡
+              </button>
+              <button
+                onClick={() => setActiveTab('appreciation')}
+                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                  activeTab === 'appreciation'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                }`}
+              >
+                赞赏支持
+              </button>
+              <button
                 onClick={() => setActiveTab('dice')}
                 className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
                   activeTab === 'dice'
@@ -368,9 +450,8 @@ const Lab = () => {
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                               {event.title}
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                              {event.description}
-                            </p>
+                            <div className="text-gray-600 dark:text-gray-400 text-sm mb-3" dangerouslySetInnerHTML={{ __html: event.description }} style={{ maxWidth: '100%', maxHeight: '150px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical' }} />
+                            
                             <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
                               <span className="flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -514,6 +595,129 @@ const Lab = () => {
               </div>
             )}
             
+            {activeTab === 'checkin' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <FiCheckCircle className="w-6 h-6 text-planet-purple" />
+                  每日打卡
+                </h2>
+                
+                <div className="max-w-md mx-auto">
+                  <div className="bg-gradient-to-br from-planet-purple/10 to-planet-pink/10 rounded-2xl p-8 text-center">
+                    {checkInStatus.hasCheckedIn ? (
+                      <div>
+                        <div className="text-6xl mb-4">✅</div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">今日已打卡</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          感谢你的坚持，明天继续！
+                        </p>
+                        <div className="flex justify-center gap-6">
+                          <div className="text-center">
+                            <p className="text-3xl font-bold text-planet-purple">{checkInStatus.streak}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">连续打卡天数</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-3xl font-bold text-green-500">+{checkInStatus.todayPoints}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">今日获得月球分</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-6xl mb-4">🌙</div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">今日未打卡</h3>
+                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                          点击下方按钮完成今日打卡，获得月球分奖励！
+                        </p>
+                        <button
+                          onClick={handleCheckIn}
+                          disabled={isCheckingIn}
+                          className={`w-full py-4 bg-planet-purple text-white rounded-xl font-medium hover:bg-planet-purple/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${isCheckingIn ? 'animate-pulse' : ''}`}
+                        >
+                          {isCheckingIn ? '打卡中...' : '立即打卡'}
+                        </button>
+                        {checkInStatus.streak > 0 && (
+                          <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                            已连续打卡 {checkInStatus.streak} 天，继续保持！
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'appreciation' && (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <FiCoffee className="w-6 h-6 text-planet-purple" />
+                  赞赏支持
+                </h2>
+                
+                {!appreciationCode.enabled ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">☕</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">赞赏功能暂未开放</h3>
+                    <p className="text-gray-600 dark:text-gray-400">感谢你的支持，我们会尽快开放赞赏功能！</p>
+                  </div>
+                ) : (
+                  <div className="max-w-md mx-auto">
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6">
+                      <div className="text-center mb-6">
+                        <div className="text-5xl mb-4">☕</div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">请我们喝杯咖啡</h3>
+                        <p className="text-gray-600 dark:text-gray-400">
+                          {appreciationCode.description}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        {appreciationCode.wechatQrCodeUrl && (
+                          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">微信赞赏码</p>
+                            <img 
+                              src={appreciationCode.wechatQrCodeUrl} 
+                              alt="微信赞赏码" 
+                              className="max-w-full h-48 object-contain mx-auto rounded-lg"
+                            />
+                          </div>
+                        )}
+                        
+                        {appreciationCode.alipayQrCodeUrl && (
+                          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">支付宝赞赏码</p>
+                            <img 
+                              src={appreciationCode.alipayQrCodeUrl} 
+                              alt="支付宝赞赏码" 
+                              className="max-w-full h-48 object-contain mx-auto rounded-lg"
+                            />
+                          </div>
+                        )}
+                        
+                        {appreciationCode.qrCodeUrl && (
+                          <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">赞赏码</p>
+                            <img 
+                              src={appreciationCode.qrCodeUrl} 
+                              alt="赞赏码" 
+                              className="max-w-full h-48 object-contain mx-auto rounded-lg"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                        你的支持是我们前进的动力！❤️
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {activeTab === 'dice' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -530,6 +734,20 @@ const Lab = () => {
                     <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
                       骰子游戏暂时关闭，正在进行维护和更新。请稍后再试，感谢您的理解！
                     </p>
+                  </div>
+                ) : !diceUnlocked ? (
+                  <div className="flex flex-col items-center justify-center py-16">
+                    <div className="text-6xl mb-4">🔒</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">骰子游戏已锁定</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-6">
+                      请前往星星小卖部购买骰子游戏解锁券后使用，解锁后有效期为一次投掷机会。
+                    </p>
+                    <button
+                      onClick={() => navigate('/shop')}
+                      className="px-6 py-3 bg-planet-purple text-white rounded-lg font-medium hover:bg-planet-purple/90 transition-colors"
+                    >
+                      前往星星小卖部
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
@@ -606,7 +824,7 @@ const Lab = () => {
                     </button>
                     
                     <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                      每个小时只能投掷一次
+                      当前为解锁状态，可直接投掷
                     </div>
                   </div>
                 )}
@@ -615,8 +833,8 @@ const Lab = () => {
 
             {/* 活动详情弹窗 */}
             {isViewingEvent && selectedEvent && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setIsViewingEvent(false)}>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-3xl w-full max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">活动详情</h3>
                     <button
@@ -635,7 +853,7 @@ const Lab = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动描述</label>
-                      <p className="text-gray-700 dark:text-gray-300">{selectedEvent.description}</p>
+                      <div className="text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: selectedEvent.description }} style={{ maxWidth: '100%', overflow: 'hidden' }} />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>

@@ -125,7 +125,7 @@ export default function CreatePost() {
               className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-planet-purple transition-colors"
             >
               <FiArrowLeft size={20} />
-              <span>返回社区</span>
+              <span>返回星球广场</span>
             </Link>
           </div>
 

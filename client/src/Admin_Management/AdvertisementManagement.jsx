@@ -25,7 +25,7 @@ export default function AdvertisementManagement() {
   const [filterStatus, setFilterStatus] = useState('');
 
   const positions = [
-    { value: 'community_sidebar', label: '社区侧边栏' }
+    { value: 'community_sidebar', label: '星球广场侧边栏' }
   ];
 
   const statusOptions = [

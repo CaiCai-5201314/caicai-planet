@@ -25,8 +25,9 @@ import MoonPointRequestManagement from './MoonPointRequestManagement';
 import MoonPointRuleManagement from './MoonPointRuleManagement';
 import ExpManagement from './ExpManagement';
 import LabManagement from './LabManagement';
+import ShopManagement from './ShopManagement';
 
-// 友链管理组件
+// 星际传送门管理组件
 function FriendLinkManagement() {
   const [friendLinks, setFriendLinks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,8 +68,8 @@ function FriendLinkManagement() {
       setFriendLinks(response.data?.friendLinks || []);
       setTotalPages(response.data?.pagination?.totalPages || 1);
     } catch (error) {
-      console.error('获取友链列表失败:', error);
-      toast.error('获取友链列表失败');
+      console.error('获取星际传送门列表失败:', error);
+      toast.error('获取星际传送门列表失败');
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ function FriendLinkManagement() {
 
     try {
       await api.post('/admin/friend-links', newLink);
-      toast.success('友链添加成功');
+      toast.success('星际传送门添加成功');
       setShowAddModal(false);
       setNewLink({
         name: '',
@@ -101,8 +102,8 @@ function FriendLinkManagement() {
       });
       fetchFriendLinks();
     } catch (error) {
-      console.error('添加友链失败:', error);
-      toast.error('添加友链失败');
+      console.error('添加星际传送门失败:', error);
+      toast.error('添加星际传送门失败');
     }
   };
 
@@ -122,25 +123,25 @@ function FriendLinkManagement() {
 
     try {
       await api.put(`/admin/friend-links/${currentLink.id}`, currentLink);
-      toast.success('友链更新成功');
+      toast.success('星际传送门更新成功');
       setShowEditModal(false);
       setCurrentLink(null);
       fetchFriendLinks();
     } catch (error) {
-      console.error('更新友链失败:', error);
-      toast.error('更新友链失败');
+      console.error('更新星际传送门失败:', error);
+      toast.error('更新星际传送门失败');
     }
   };
 
   const handleDeleteLink = async (id) => {
-    if (window.confirm('确定要删除这个友链吗？')) {
+    if (window.confirm('确定要删除这个星际传送门吗？')) {
       try {
         await api.delete(`/admin/friend-links/${id}`);
-        toast.success('友链删除成功');
+        toast.success('星际传送门删除成功');
         fetchFriendLinks();
       } catch (error) {
-        console.error('删除友链失败:', error);
-        toast.error('删除友链失败');
+        console.error('删除星际传送门失败:', error);
+        toast.error('删除星际传送门失败');
       }
     }
   };
@@ -162,7 +163,7 @@ function FriendLinkManagement() {
   
   // 重置外链接
   const handleResetShareLink = async (id) => {
-    if (window.confirm('确定要重置这个友链的外链接吗？')) {
+    if (window.confirm('确定要重置这个星际传送门的外链接吗？')) {
       try {
         await api.post(`/admin/friend-links/${id}/share/reset`);
         toast.success('外链接已重置');
@@ -183,11 +184,11 @@ function FriendLinkManagement() {
   const handleApproveLink = async (id, status) => {
     try {
       await api.put(`/admin/friend-links/${id}/approve`, { status });
-      toast.success(status === 'approved' ? '友链审核通过' : '友链已拒绝');
+      toast.success(status === 'approved' ? '星际传送门审核通过' : '星际传送门已拒绝');
       fetchFriendLinks();
     } catch (error) {
-      console.error('审核友链失败:', error);
-      toast.error('审核友链失败');
+      console.error('审核星际传送门失败:', error);
+      toast.error('审核星际传送门失败');
     }
   };
 
@@ -227,12 +228,12 @@ function FriendLinkManagement() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">友链管理</h2>
+        <h2 className="text-2xl font-bold text-gray-900">星际传送门管理</h2>
         <button
           onClick={() => setShowAddModal(true)}
           className="px-4 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors"
         >
-          添加友链
+          添加星际传送门
         </button>
       </div>
 
@@ -241,7 +242,7 @@ function FriendLinkManagement() {
           <div>
             <input
               type="text"
-              placeholder="搜索友链..."
+              placeholder="搜索星际传送门..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
@@ -268,7 +269,7 @@ function FriendLinkManagement() {
           </div>
         ) : friendLinks.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            暂无友链
+            暂无星际传送门
           </div>
         ) : (
           <div className="space-y-4">
@@ -433,11 +434,11 @@ function FriendLinkManagement() {
         )}
       </div>
 
-      {/* 添加友链模态框 */}
+      {/* 添加星际传送门模态框 */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">添加友链</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">添加星际传送门</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站名称</label>
@@ -548,11 +549,11 @@ function FriendLinkManagement() {
         </div>
       )}
 
-      {/* 编辑友链模态框 */}
+      {/* 编辑星际传送门模态框 */}
       {showEditModal && currentLink && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">编辑友链</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">编辑星际传送门</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">网站名称</label>
@@ -670,7 +671,7 @@ function FriendLinkManagement() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">生成外链接</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">友链名称</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">星际传送门名称</label>
                 <input
                   type="text"
                   value={currentLink.name}
@@ -725,7 +726,7 @@ function CommentList({ type, comments, loading, onStatusChange, onDelete, onRepl
   if (comments.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        暂无{type === 'post' ? '社区' : '任务'}评论
+        暂无{type === 'post' ? '星球广场' : '任务'}评论
       </div>
     );
   }
@@ -954,7 +955,7 @@ function CommentManagement() {
   ];
 
   const tabs = [
-    { key: 'post', label: '社区评论', count: postComments.length },
+    { key: 'post', label: '星球广场评论', count: postComments.length },
     { key: 'task', label: '任务评论', count: taskComments.length }
   ];
 
@@ -1873,7 +1874,7 @@ function AdminLayout({ children }) {
         ]
       },
       { 
-        label: '社区中心', 
+        label: '星球广场中心', 
         icon: FiFileText, 
         permission: 'postManagement',
         children: [
@@ -1905,10 +1906,11 @@ function AdminLayout({ children }) {
       },
       { path: '/admin-caicai0304/site-configs', icon: FiSettings, label: '网站配置', permission: 'siteConfig' },
       { path: '/admin-caicai0304/announcements', icon: FiFileText, label: '公告管理', permission: 'announcementManagement' },
-      { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '友链管理', permission: 'friendLinkManagement' },
+      { path: '/admin-caicai0304/friend-links', icon: FiLink, label: '星际传送门管理', permission: 'friendLinkManagement' },
       { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
       { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
       { path: '/admin-caicai0304/lab', icon: FiSettings, label: '星球实验室管理', permission: 'labManagement' },
+      { path: '/admin-caicai0304/shop', icon: FiStar, label: '星星小卖部管理', permission: 'shopManagement' },
     ];
 
     // 管理员显示所有菜单
@@ -2205,7 +2207,7 @@ function DashboardHome() {
           trend={stats.stats.commentTrend}
         />
         <StatCard 
-          label="待审核友链" 
+          label="待审核星际传送门" 
           value={stats.stats.pendingFriendLinks} 
           icon={FiLink} 
           color="red" 
@@ -3659,6 +3661,7 @@ export default function AdminDashboard() {
         <Route path="/exp-management" element={<ProtectedRoute requiredPermission="expManagement"><ExpManagement /></ProtectedRoute>} />
         <Route path="/error-logs" element={<ProtectedRoute requiredPermission="errorLogManagement"><ErrorLogManagement /></ProtectedRoute>} />
         <Route path="/lab" element={<ProtectedRoute requiredPermission="labManagement"><LabManagement /></ProtectedRoute>} />
+        <Route path="/shop" element={<ProtectedRoute requiredPermission="shopManagement"><ShopManagement /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );

@@ -57,7 +57,7 @@ export default function Home() {
                 to="/community"
                 className="group flex items-center space-x-2 px-8 py-4 bg-white text-planet-purple rounded-full font-semibold hover:shadow-2xl hover:shadow-white/20 transition-all duration-300"
               >
-                <span>进入社区</span>
+                <span>进入星球广场</span>
                 <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
               </Link>
             ) : (
@@ -161,7 +161,7 @@ export default function Home() {
               <div className="flex flex-wrap gap-3">
                 {user ? (
                   <Link to="/community" className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 flex items-center space-x-2">
-                    <span>进入社区</span>
+                    <span>进入星球广场</span>
                     <FiArrowRight size={18} />
                   </Link>
                 ) : (

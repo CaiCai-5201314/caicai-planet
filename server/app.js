@@ -205,6 +205,30 @@ try {
   console.error('Error loading lab routes:', error);
 }
 
+// 赞赏码上传路由（直接注册，确保优先匹配）
+const upload = require('./middleware/upload');
+const labController = require('./controllers/labController');
+app.post('/api/lab/appreciation/upload', upload.single('file'), (req, res) => {
+  console.log('=== DIRECT UPLOAD ROUTE CALLED ===');
+  console.log('File:', req.file);
+  console.log('Body:', req.body);
+  try {
+    labController.uploadAppreciationImage(req, res);
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ success: false, message: '上传失败' });
+  }
+});
+
+console.log('Loading shop routes...');
+try {
+  const shopRoutes = require('./routes/shop');
+  console.log('Shop routes loaded successfully!');
+  app.use('/api/shop', shopRoutes);
+} catch (error) {
+  console.error('Error loading shop routes:', error);
+}
+
 // 错误日志记录路由（不需要认证）
 app.post('/api/error/log', async (req, res) => {
   try {

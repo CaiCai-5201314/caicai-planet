@@ -593,16 +593,6 @@ export default function Profile() {
       <div className="pt-16">
         {/* 用户信息头部 */}
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          {/* 返回按钮 */}
-          <div className="flex items-center space-x-4 mb-6">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-            >
-              <FiArrowLeft size={20} />
-              <span>返回</span>
-            </button>
-          </div>
           <div className="relative mb-8">
             {/* 顶部用户信息区域 */}
             <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-800 dark:bg-gray-800" style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.05), 0 10px 40px rgba(0,0,0,0.1)' }}>

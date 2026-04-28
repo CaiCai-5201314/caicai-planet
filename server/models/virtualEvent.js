@@ -37,9 +37,9 @@ module.exports = (sequelize) => {
       defaultValue: 'points'
     },
     reward_value: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(255),
       allowNull: false,
-      defaultValue: 0
+      defaultValue: '0'
     }
   }, {
     tableName: 'virtual_events',

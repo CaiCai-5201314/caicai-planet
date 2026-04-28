@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiCalendar, FiAward, FiSettings, FiPlus, FiEdit, FiTrash2, FiSave, FiX, FiCheck, FiHelpCircle, FiEye } from 'react-icons/fi';
+import { FiCalendar, FiAward, FiSettings, FiPlus, FiEdit, FiTrash2, FiSave, FiX, FiCheck, FiHelpCircle, FiEye, FiCoffee } from 'react-icons/fi';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -22,7 +24,7 @@ const LabManagement = () => {
     end_time: '',
     reward_type: 'points',
     custom_reward_type: '',
-    reward_value: 0
+    reward_value: ''
   });
   
   const [achievementForm, setAchievementForm] = useState({
@@ -62,6 +64,17 @@ const LabManagement = () => {
     diceFailureMessage: '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'
   });
   
+  // 赞赏码配置表单状态
+  const [appreciationForm, setAppreciationForm] = useState({
+    qrCodeUrl: '',
+    alipayQrCodeUrl: '',
+    wechatQrCodeUrl: '',
+    enabled: true,
+    description: '如果你喜欢我们的服务，可以请我们喝杯咖啡！'
+  });
+  
+  const [isSavingAppreciation, setIsSavingAppreciation] = useState(false);
+  
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   useEffect(() => {
@@ -73,12 +86,13 @@ const LabManagement = () => {
       setLoading(true);
       
       // 并行请求数据
-      const [eventsRes, achievementsRes, qaRes, settingsRes, diceRecordsRes] = await Promise.all([
+      const [eventsRes, achievementsRes, qaRes, settingsRes, diceRecordsRes, appreciationRes] = await Promise.all([
         api.get('/lab/events'),
         api.get('/lab/achievements'),
         api.get('/lab/qa'),
         api.get('/lab/settings'),
-        api.get('/lab/dice/records')
+        api.get('/lab/dice/records'),
+        api.get('/lab/appreciation')
       ]);
 
       setEvents(eventsRes.data.events);
@@ -90,12 +104,83 @@ const LabManagement = () => {
       if (settingsRes.data.settings) {
         setSettingsForm(settingsRes.data.settings);
       }
+      
+      // 更新赞赏码配置
+      if (appreciationRes.data) {
+        setAppreciationForm(appreciationRes.data);
+      }
     } catch (error) {
       console.error('获取实验室数据失败:', error);
       toast.error('获取实验室数据失败');
     } finally {
       setLoading(false);
     }
+  };
+  
+  // 赞赏码配置管理
+  const handleAppreciationInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setAppreciationForm(prev => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
+  };
+  
+  const handleSaveAppreciation = async () => {
+    try {
+      setIsSavingAppreciation(true);
+      await api.put('/lab/appreciation', appreciationForm);
+      toast.success('赞赏码配置更新成功');
+    } catch (error) {
+      console.error('更新赞赏码配置失败:', error);
+      toast.error('更新赞赏码配置失败');
+    } finally {
+      setIsSavingAppreciation(false);
+    }
+  };
+  
+  // 上传赞赏码图片
+  const handleUploadAppreciationImage = async (file, imageType) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'appreciation');
+      
+      const response = await api.post('/lab/appreciation/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data.success) {
+        const url = `http://localhost:3002${response.data.url}`;
+        if (imageType === 'wechat') {
+          setAppreciationForm(prev => ({ ...prev, wechatQrCodeUrl: url }));
+        } else if (imageType === 'alipay') {
+          setAppreciationForm(prev => ({ ...prev, alipayQrCodeUrl: url }));
+        }
+        toast.success('上传成功');
+      } else {
+        toast.error(response.data.message || '上传失败');
+      }
+    } catch (error) {
+      console.error('上传失败:', error);
+      toast.error('上传失败');
+    }
+  };
+  
+  const handleDrop = (e, imageType) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleUploadAppreciationImage(file, imageType);
+    } else {
+      toast.error('请上传图片文件');
+    }
+  };
+  
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
   // 事件管理
@@ -119,8 +204,12 @@ const LabManagement = () => {
       }
       
       const eventData = {
-        ...eventForm,
-        reward_type: eventForm.reward_type === 'custom' ? eventForm.custom_reward_type : eventForm.reward_type
+        title: eventForm.title,
+        description: eventForm.description,
+        start_time: eventForm.start_time,
+        end_time: eventForm.end_time,
+        reward_type: eventForm.reward_type,
+        reward_value: eventForm.reward_value
       };
       
       await api.post('/lab/events', eventData);
@@ -132,7 +221,7 @@ const LabManagement = () => {
         end_time: '',
         reward_type: 'points',
         custom_reward_type: '',
-        reward_value: 0
+        reward_value: ''
       });
       setIsAddingEvent(false);
       fetchData();
@@ -150,8 +239,8 @@ const LabManagement = () => {
       start_time: event.start_time,
       end_time: event.end_time,
       reward_type: isCustomReward ? 'custom' : event.reward_type,
-      custom_reward_type: isCustomReward ? event.reward_type : '',
-      reward_value: event.reward_value
+      custom_reward_type: '',
+      reward_value: event.reward_value.toString()
     });
     setEditingEventId(event.id);
   };
@@ -171,8 +260,12 @@ const LabManagement = () => {
       }
       
       const eventData = {
-        ...eventForm,
-        reward_type: eventForm.reward_type === 'custom' ? eventForm.custom_reward_type : eventForm.reward_type
+        title: eventForm.title,
+        description: eventForm.description,
+        start_time: eventForm.start_time,
+        end_time: eventForm.end_time,
+        reward_type: eventForm.reward_type,
+        reward_value: eventForm.reward_value
       };
       
       await api.put(`/lab/events/${editingEventId}`, eventData);
@@ -184,7 +277,7 @@ const LabManagement = () => {
         end_time: '',
         reward_type: 'points',
         custom_reward_type: '',
-        reward_value: 0
+        reward_value: ''
       });
       setEditingEventId(null);
       fetchData();
@@ -484,6 +577,19 @@ const LabManagement = () => {
             <span>骰子记录</span>
           </div>
         </button>
+        <button
+          onClick={() => setActiveTab('appreciation')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+            activeTab === 'appreciation'
+              ? 'bg-planet-purple text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <FiCoffee size={18} />
+            <span>赞赏码管理</span>
+          </div>
+        </button>
       </div>
 
       {/* 内容区域 */}
@@ -528,13 +634,28 @@ const LabManagement = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述</label>
-                    <textarea
-                      name="description"
+                    <ReactQuill
                       value={eventForm.description}
-                      onChange={handleEventInputChange}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                      onChange={(value) => setEventForm(prev => ({ ...prev, description: value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
                       placeholder="活动描述"
-                      rows={3}
+                      modules={{
+                        toolbar: [
+                          ['bold', 'italic', 'underline', 'strike'],
+                          ['blockquote', 'code-block'],
+                          [{ 'header': 1 }, { 'header': 2 }],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                          [{ 'indent': '-1' }, { 'indent': '+1' }],
+                          [{ 'direction': 'rtl' }],
+                          [{ 'size': ['small', false, 'large', 'huge'] }],
+                          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                          [{ 'color': [] }, { 'background': [] }],
+                          [{ 'font': [] }],
+                          [{ 'align': [] }],
+                          ['clean'],
+                          ['link', 'image']
+                        ]
+                      }}
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -593,12 +714,12 @@ const LabManagement = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励值</label>
                       <input
-                        type="number"
+                        type={eventForm.reward_type === 'custom' ? 'text' : 'number'}
                         name="reward_value"
                         value={eventForm.reward_value}
                         onChange={handleEventInputChange}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
-                        placeholder="奖励值"
+                        placeholder={eventForm.reward_type === 'custom' ? '奖励消息' : '奖励值'}
                       />
                     </div>
                   </div>
@@ -649,13 +770,28 @@ const LabManagement = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述</label>
-                    <textarea
-                      name="description"
+                    <ReactQuill
                       value={eventForm.description}
-                      onChange={handleEventInputChange}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                      onChange={(value) => setEventForm(prev => ({ ...prev, description: value }))}
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
                       placeholder="活动描述"
-                      rows={3}
+                      modules={{
+                        toolbar: [
+                          ['bold', 'italic', 'underline', 'strike'],
+                          ['blockquote', 'code-block'],
+                          [{ 'header': 1 }, { 'header': 2 }],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                          [{ 'indent': '-1' }, { 'indent': '+1' }],
+                          [{ 'direction': 'rtl' }],
+                          [{ 'size': ['small', false, 'large', 'huge'] }],
+                          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                          [{ 'color': [] }, { 'background': [] }],
+                          [{ 'font': [] }],
+                          [{ 'align': [] }],
+                          ['clean'],
+                          ['link', 'image']
+                        ]
+                      }}
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -714,12 +850,12 @@ const LabManagement = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">奖励值</label>
                       <input
-                        type="number"
+                        type={eventForm.reward_type === 'custom' ? 'text' : 'number'}
                         name="reward_value"
                         value={eventForm.reward_value}
                         onChange={handleEventInputChange}
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
-                        placeholder="奖励值"
+                        placeholder={eventForm.reward_type === 'custom' ? '奖励消息' : '奖励值'}
                       />
                     </div>
                   </div>
@@ -760,9 +896,8 @@ const LabManagement = () => {
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                           {event.title}
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-3">
-                          {event.description}
-                        </p>
+                        <div className="text-gray-600 dark:text-gray-400 text-sm mb-3" dangerouslySetInnerHTML={{ __html: event.description }} style={{ maxWidth: '100%', maxHeight: '150px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: '3', WebkitBoxOrient: 'vertical' }} />
+                        
                         <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
                           <span className="flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -827,8 +962,8 @@ const LabManagement = () => {
 
         {/* 活动详情弹窗 */}
         {isViewingEvent && selectedEvent && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setIsViewingEvent(false)}>
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-3xl w-full max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">活动详情</h3>
                 <button
@@ -845,7 +980,7 @@ const LabManagement = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动描述</label>
-                  <p className="text-gray-700 dark:text-gray-300">{selectedEvent.description}</p>
+                  <div className="text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: selectedEvent.description }} style={{ maxWidth: '100%', overflow: 'hidden' }} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -1515,23 +1650,6 @@ const LabManagement = () => {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        每小时最大投掷次数
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={settingsForm.diceMaxRollsPerHour || 1}
-                        onChange={(e) => setSettingsForm(prev => ({ ...prev, diceMaxRollsPerHour: parseInt(e.target.value) }))}
-                        className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
-                      />
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        设置用户每小时可以投掷骰子的最大次数
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         成功奖励
                       </label>
                       <input
@@ -1708,6 +1826,157 @@ const LabManagement = () => {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* 赞赏码管理 */}
+        {activeTab === 'appreciation' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">赞赏码管理</h2>
+            </div>
+
+            <div className="border border-gray-100 dark:border-gray-700 rounded-xl p-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <label className="text-gray-700 dark:text-gray-300">
+                    启用赞赏功能
+                  </label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={appreciationForm.enabled}
+                      onChange={(e) => setAppreciationForm(prev => ({ ...prev, enabled: e.target.checked }))}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-planet-purple rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-gray-300 after:border-gray-300 dark:after:border-gray-600 after:border-solid after:border-[2px] after:border-transparent after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-planet-purple"></div>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">赞赏描述</label>
+                  <textarea
+                    name="description"
+                    value={appreciationForm.description}
+                    onChange={handleAppreciationInputChange}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:border-planet-purple focus:ring-2 focus:ring-planet-purple/20 outline-none"
+                    placeholder="输入赞赏描述"
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">微信赞赏码</label>
+                  {appreciationForm.wechatQrCodeUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={appreciationForm.wechatQrCodeUrl} 
+                        alt="微信赞赏码" 
+                        className="max-w-xs mx-auto rounded-lg mb-2"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<p className="text-gray-500 text-center">图片加载失败</p>';
+                        }}
+                      />
+                      <button
+                        onClick={() => setAppreciationForm(prev => ({ ...prev, wechatQrCodeUrl: '' }))}
+                        className="block mx-auto px-4 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        移除图片
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDrop={(e) => handleDrop(e, 'wechat')}
+                      onDragOver={handleDragOver}
+                      onClick={() => document.getElementById('wechat-upload').click()}
+                      className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-planet-purple hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <input
+                        id="wechat-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) handleUploadAppreciationImage(file, 'wechat');
+                        }}
+                      />
+                      <div className="text-4xl mb-2">📷</div>
+                      <p className="text-gray-600 dark:text-gray-400">点击或拖拽上传微信赞赏码</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">支持 JPG、PNG、GIF 格式</p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">支付宝赞赏码</label>
+                  {appreciationForm.alipayQrCodeUrl ? (
+                    <div className="relative">
+                      <img 
+                        src={appreciationForm.alipayQrCodeUrl} 
+                        alt="支付宝赞赏码" 
+                        className="max-w-xs mx-auto rounded-lg mb-2"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<p className="text-gray-500 text-center">图片加载失败</p>';
+                        }}
+                      />
+                      <button
+                        onClick={() => setAppreciationForm(prev => ({ ...prev, alipayQrCodeUrl: '' }))}
+                        className="block mx-auto px-4 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        移除图片
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onDrop={(e) => handleDrop(e, 'alipay')}
+                      onDragOver={handleDragOver}
+                      onClick={() => document.getElementById('alipay-upload').click()}
+                      className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-planet-purple hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <input
+                        id="alipay-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) handleUploadAppreciationImage(file, 'alipay');
+                        }}
+                      />
+                      <div className="text-4xl mb-2">📷</div>
+                      <p className="text-gray-600 dark:text-gray-400">点击或拖拽上传支付宝赞赏码</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">支持 JPG、PNG、GIF 格式</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleSaveAppreciation}
+                    disabled={isSavingAppreciation}
+                    className="px-6 py-2 bg-planet-purple text-white rounded-lg hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isSavingAppreciation ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>保存中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiSave size={18} />
+                        <span>保存配置</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
