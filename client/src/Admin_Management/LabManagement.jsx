@@ -1876,7 +1876,10 @@ const LabManagement = () => {
                         className="max-w-xs mx-auto rounded-lg mb-2"
                         onError={(e) => {
                           e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = '<p className="text-gray-500 text-center">图片加载失败</p>';
+                          const errorDiv = document.createElement('p');
+                          errorDiv.className = 'text-gray-500 text-center mb-2';
+                          errorDiv.textContent = '图片加载失败';
+                          e.target.parentElement.insertBefore(errorDiv, e.target.nextSibling);
                         }}
                       />
                       <button
@@ -1920,7 +1923,10 @@ const LabManagement = () => {
                         className="max-w-xs mx-auto rounded-lg mb-2"
                         onError={(e) => {
                           e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = '<p className="text-gray-500 text-center">图片加载失败</p>';
+                          const errorDiv = document.createElement('p');
+                          errorDiv.className = 'text-gray-500 text-center mb-2';
+                          errorDiv.textContent = '图片加载失败';
+                          e.target.parentElement.insertBefore(errorDiv, e.target.nextSibling);
                         }}
                       />
                       <button

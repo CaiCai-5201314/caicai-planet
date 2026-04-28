@@ -29,25 +29,37 @@ exports.getEventById = async (req, res) => {
   }
 };
 
+function convertLocalToUTC(dateString) {
+  if (!dateString) return dateString;
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return dateString;
+  }
+  
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+}
+
 exports.createEvent = async (req, res) => {
   try {
     const { title, description, start_time, end_time, reward_type, reward_value } = req.body;
     
-    // 处理reward_value，确保它是有效的值
+    const utcStartTime = convertLocalToUTC(start_time);
+    const utcEndTime = convertLocalToUTC(end_time);
+    
     let processedRewardValue = reward_value;
     if (processedRewardValue === undefined || processedRewardValue === null || processedRewardValue === '') {
       processedRewardValue = 0;
     } else if (reward_type !== 'custom') {
-      // 对于非自定义奖励类型，确保值是数字
       processedRewardValue = parseInt(processedRewardValue) || 0;
     }
     
     const event = await VirtualEvent.create({
       title,
       description,
-      start_time,
-      end_time,
-      status: new Date(start_time) > new Date() ? 'upcoming' : (new Date(end_time) < new Date() ? 'ended' : 'active'),
+      start_time: utcStartTime,
+      end_time: utcEndTime,
+      status: utcStartTime > new Date() ? 'upcoming' : (utcEndTime < new Date() ? 'ended' : 'active'),
       reward_type,
       reward_value: processedRewardValue
     });
@@ -71,9 +83,11 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ success: false, message: '活动不存在' });
     }
     
-    const status = new Date(start_time) > new Date() ? 'upcoming' : (new Date(end_time) < new Date() ? 'ended' : 'active');
+    const utcStartTime = convertLocalToUTC(start_time);
+    const utcEndTime = convertLocalToUTC(end_time);
     
-    // 处理reward_value，确保它是字符串类型
+    const status = utcStartTime > new Date() ? 'upcoming' : (utcEndTime < new Date() ? 'ended' : 'active');
+    
     let processedRewardValue = reward_value;
     if (processedRewardValue === undefined || processedRewardValue === null) {
       processedRewardValue = '';
@@ -84,8 +98,8 @@ exports.updateEvent = async (req, res) => {
     await event.update({
       title,
       description,
-      start_time,
-      end_time,
+      start_time: utcStartTime,
+      end_time: utcEndTime,
       status,
       reward_type,
       reward_value: processedRewardValue
@@ -676,7 +690,9 @@ exports.checkIn = async (req, res) => {
 };
 
 // 赞赏码相关功能
-let appreciationConfig = {
+const { LabSetting } = require('../models');
+
+const defaultAppreciationConfig = {
   qrCodeUrl: '',
   alipayQrCodeUrl: '',
   wechatQrCodeUrl: '',
@@ -684,12 +700,29 @@ let appreciationConfig = {
   description: '如果你喜欢我们的服务，可以请我们喝杯咖啡！'
 };
 
+async function getOrCreateLabSetting() {
+  let setting = await LabSetting.findOne({ where: { id: 1 } });
+  if (!setting) {
+    setting = await LabSetting.create({ id: 1 });
+  }
+  return setting;
+}
+
 exports.getAppreciationConfig = async (req, res) => {
   try {
-    res.status(200).json(appreciationConfig);
+    const setting = await getOrCreateLabSetting();
+    let config = defaultAppreciationConfig;
+    if (setting.appreciation_config) {
+      try {
+        config = JSON.parse(setting.appreciation_config);
+      } catch (e) {
+        console.error('解析赞赏码配置失败，使用默认配置');
+      }
+    }
+    res.status(200).json(config);
   } catch (error) {
     console.error('获取赞赏码配置失败:', error);
-    res.status(500).json({ success: false, message: '获取赞赏码配置失败' });
+    res.status(200).json(defaultAppreciationConfig);
   }
 };
 
@@ -697,13 +730,25 @@ exports.updateAppreciationConfig = async (req, res) => {
   try {
     const { qrCodeUrl, alipayQrCodeUrl, wechatQrCodeUrl, enabled, description } = req.body;
     
-    if (qrCodeUrl !== undefined) appreciationConfig.qrCodeUrl = qrCodeUrl;
-    if (alipayQrCodeUrl !== undefined) appreciationConfig.alipayQrCodeUrl = alipayQrCodeUrl;
-    if (wechatQrCodeUrl !== undefined) appreciationConfig.wechatQrCodeUrl = wechatQrCodeUrl;
-    if (enabled !== undefined) appreciationConfig.enabled = enabled;
-    if (description !== undefined) appreciationConfig.description = description;
+    const setting = await getOrCreateLabSetting();
+    let config = defaultAppreciationConfig;
+    if (setting.appreciation_config) {
+      try {
+        config = JSON.parse(setting.appreciation_config);
+      } catch (e) {
+        console.error('解析赞赏码配置失败，使用默认配置');
+      }
+    }
     
-    res.status(200).json({ success: true, message: '赞赏码配置更新成功', config: appreciationConfig });
+    if (qrCodeUrl !== undefined) config.qrCodeUrl = qrCodeUrl;
+    if (alipayQrCodeUrl !== undefined) config.alipayQrCodeUrl = alipayQrCodeUrl;
+    if (wechatQrCodeUrl !== undefined) config.wechatQrCodeUrl = wechatQrCodeUrl;
+    if (enabled !== undefined) config.enabled = enabled;
+    if (description !== undefined) config.description = description;
+    
+    await setting.update({ appreciation_config: JSON.stringify(config) });
+    
+    res.status(200).json({ success: true, message: '赞赏码配置更新成功', config });
   } catch (error) {
     console.error('更新赞赏码配置失败:', error);
     res.status(500).json({ success: false, message: '更新赞赏码配置失败' });
@@ -716,8 +761,8 @@ exports.uploadAppreciationImage = async (req, res) => {
       return res.status(400).json({ success: false, message: '请选择要上传的文件' });
     }
     
-    const { type } = req.query;
-    const fileUrl = `/uploads/${type || 'posts'}/${req.file.filename}`;
+    const storageService = require('../services/storageService');
+    const fileUrl = await storageService.upload(req.file, 'appreciation');
     
     res.status(200).json({ 
       success: true, 
