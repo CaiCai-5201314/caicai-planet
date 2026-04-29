@@ -1,5 +1,5 @@
 const db = require('../models');
-const { VirtualEvent, EventParticipant, Achievement, UserAchievement, UserPreference, User, MoonPointLog, QA } = db;
+const { VirtualEvent, EventParticipant, Achievement, UserAchievement, UserPreference, User, MoonPointLog, QA, LabSetting } = db;
 const sequelize = db.sequelize;
 
 // 虚拟活动相关功能
@@ -453,7 +453,8 @@ exports.getEventParticipants = async (req, res) => {
 };
 
 // 实验室设置相关功能
-let labSettings = {
+
+const defaultLabSettings = {
   labEnabled: true,
   eventMaxParticipants: 100,
   achievementThreshold: 5,
@@ -462,6 +463,7 @@ let labSettings = {
   // 骰子游戏设置
   diceEnabled: true,
   diceSuccessReward: 0,
+  diceSuccessRolls: 1,
   diceSuccessMessage: '恭喜你！投中了 {value} 点，允许做你想做的事情！',
   diceFailureMessage: '很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！'
 };
@@ -471,31 +473,55 @@ let diceRecords = [];
 
 exports.getSettings = async (req, res) => {
   try {
-    res.status(200).json({ success: true, settings: labSettings });
+    console.log('=== DEBUG: getSettings called ===');
+    console.log('LabSetting model:', LabSetting);
+    
+    let setting = await LabSetting.findOne({ where: { id: 1 } });
+    
+    if (!setting) {
+      setting = await LabSetting.create({ id: 1 });
+      console.log('Created new lab setting');
+    }
+    
+    console.log('Setting found:', setting ? setting.toJSON() : null);
+    
+    let settings = defaultLabSettings;
+    
+    if (setting.lab_config) {
+      try {
+        const savedSettings = JSON.parse(setting.lab_config);
+        settings = { ...settings, ...savedSettings };
+      } catch (e) {
+        console.warn('解析实验室配置失败:', e.message);
+      }
+    }
+    
+    res.status(200).json({ success: true, settings });
   } catch (error) {
     console.error('获取实验室设置失败:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ success: false, message: '获取实验室设置失败' });
   }
 };
 
 exports.updateSettings = async (req, res) => {
   try {
-    const { labEnabled, eventMaxParticipants, achievementThreshold, rewardMultiplier, customMessage, diceEnabled, diceSuccessReward, diceSuccessMessage, diceFailureMessage } = req.body;
+    let setting = await LabSetting.findOne({ where: { id: 1 } });
+    if (!setting) {
+      setting = await LabSetting.create({ id: 1 });
+    }
     
-    labSettings = {
-      labEnabled: labEnabled !== undefined ? labEnabled : labSettings.labEnabled,
-      eventMaxParticipants: eventMaxParticipants !== undefined ? eventMaxParticipants : labSettings.eventMaxParticipants,
-      achievementThreshold: achievementThreshold !== undefined ? achievementThreshold : labSettings.achievementThreshold,
-      rewardMultiplier: rewardMultiplier !== undefined ? rewardMultiplier : labSettings.rewardMultiplier,
-      customMessage: customMessage !== undefined ? customMessage : labSettings.customMessage,
-      // 骰子游戏设置
-      diceEnabled: diceEnabled !== undefined ? diceEnabled : labSettings.diceEnabled,
-      diceSuccessReward: diceSuccessReward !== undefined ? diceSuccessReward : labSettings.diceSuccessReward,
-      diceSuccessMessage: diceSuccessMessage !== undefined ? diceSuccessMessage : labSettings.diceSuccessMessage,
-      diceFailureMessage: diceFailureMessage !== undefined ? diceFailureMessage : labSettings.diceFailureMessage
+    const currentSettings = setting.lab_config ? JSON.parse(setting.lab_config) : {};
+    
+    const newSettings = {
+      ...defaultLabSettings,
+      ...currentSettings,
+      ...req.body
     };
     
-    res.status(200).json({ success: true, settings: labSettings, message: '设置更新成功' });
+    await setting.update({ lab_config: JSON.stringify(newSettings) });
+    
+    res.status(200).json({ success: true, settings: newSettings, message: '设置更新成功' });
   } catch (error) {
     console.error('更新实验室设置失败:', error);
     res.status(500).json({ success: false, message: '更新实验室设置失败' });
@@ -648,13 +674,52 @@ exports.getCheckInStatus = async (req, res) => {
   try {
     const user_id = req.user.id;
     
+    // 获取打卡配置
+    let checkinConfig = { enabled: true, dailyReward: 10, streakBonus: 5 };
+    try {
+      const setting = await LabSetting.findOne({ where: { id: 1 } });
+      if (setting && setting.checkin_config) {
+        checkinConfig = JSON.parse(setting.checkin_config);
+      }
+    } catch (e) {
+      console.warn('获取打卡配置失败:', e.message);
+    }
+    
+    // 如果打卡未启用，直接返回
+    if (!checkinConfig.enabled) {
+      return res.status(200).json({
+        success: true,
+        enabled: false,
+        hasCheckedIn: false,
+        streak: 0,
+        points: 0,
+        exp: 0,
+        lastCheckInDate: null
+      });
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
+    const { ExpLog } = require('../models');
+    
+    // 查询今日的月球分打卡记录
     const lastCheckIn = await MoonPointLog.findOne({
+      where: {
+        user_id,
+        reason_type: 'check_in',
+        created_at: {
+          [db.Sequelize.Op.gte]: today
+        }
+      },
+      order: [['created_at', 'DESC']]
+    });
+    
+    // 查询今日的经验值打卡记录
+    const lastExpLog = await ExpLog.findOne({
       where: {
         user_id,
         reason_type: 'check_in',
@@ -688,11 +753,16 @@ exports.getCheckInStatus = async (req, res) => {
       }
     }
     
+    // 如果有月球分记录但没有经验值记录，可能是旧的打卡记录，默认返回10经验值
+    const expValue = hasCheckedIn ? (lastExpLog ? lastExpLog.exp_change : 10) : 0;
+    
     res.status(200).json({
       success: true,
+      enabled: true,
       hasCheckedIn,
       streak,
-      todayPoints: hasCheckedIn ? (lastCheckIn ? lastCheckIn.points : 0) : 0,
+      points: hasCheckedIn ? (lastCheckIn ? lastCheckIn.points : 0) : 0,
+      exp: expValue,
       lastCheckInDate: lastCheckIn ? lastCheckIn.created_at : null
     });
   } catch (error) {
@@ -748,8 +818,9 @@ exports.checkIn = async (req, res) => {
     
     streak++;
     
-    let basePoints = 5;
+    let basePoints = 10;
     let bonusPoints = 0;
+    const expPoints = 10;
     
     if (streak >= 30) {
       bonusPoints = 100;
@@ -761,6 +832,8 @@ exports.checkIn = async (req, res) => {
     
     const totalPoints = basePoints + bonusPoints;
     
+    const { ExpLog } = require('../models');
+    
     await sequelize.transaction(async (t) => {
       await User.increment({ moon_points: totalPoints }, { where: { id: user_id }, transaction: t });
       
@@ -771,17 +844,35 @@ exports.checkIn = async (req, res) => {
         reason: `每日打卡${streak > 1 ? `(连续${streak}天)` : ''}`,
         transaction: t
       });
+      
+      // 获取用户当前经验值
+      const user = await User.findByPk(user_id, { transaction: t });
+      const expBefore = user.exp || 0;
+      const expAfter = expBefore + expPoints;
+      
+      await User.update({ exp: expAfter }, { where: { id: user_id }, transaction: t });
+      
+      await ExpLog.create({
+        user_id,
+        exp_change: expPoints,
+        exp_before: expBefore,
+        exp_after: expAfter,
+        reason: `每日打卡${streak > 1 ? `(连续${streak}天)` : ''}`,
+        reason_type: 'check_in',
+        transaction: t
+      });
     });
     
-    let message = `打卡成功！获得 ${totalPoints} 月球分`;
+    let message = `打卡成功！获得 ${totalPoints} 月球分和 ${expPoints} 经验值`;
     if (bonusPoints > 0) {
-      message += `（基础 ${basePoints} + 连续打卡奖励 ${bonusPoints}）`;
+      message += `（基础月球分 ${basePoints} + 连续打卡奖励 ${bonusPoints}）`;
     }
     
     res.status(200).json({
       success: true,
       message,
       points: totalPoints,
+      exp: expPoints,
       streak
     });
   } catch (error) {
@@ -791,7 +882,6 @@ exports.checkIn = async (req, res) => {
 };
 
 // 赞赏码相关功能
-const { LabSetting } = require('../models');
 
 const defaultAppreciationConfig = {
   qrCodeUrl: '',
@@ -801,17 +891,13 @@ const defaultAppreciationConfig = {
   description: '如果你喜欢我们的服务，可以请我们喝杯咖啡！'
 };
 
-async function getOrCreateLabSetting() {
-  let setting = await LabSetting.findOne({ where: { id: 1 } });
-  if (!setting) {
-    setting = await LabSetting.create({ id: 1 });
-  }
-  return setting;
-}
-
 exports.getAppreciationConfig = async (req, res) => {
   try {
-    const setting = await getOrCreateLabSetting();
+    let setting = await LabSetting.findOne({ where: { id: 1 } });
+    if (!setting) {
+      setting = await LabSetting.create({ id: 1 });
+    }
+    
     let config = defaultAppreciationConfig;
     if (setting.appreciation_config) {
       try {
@@ -831,7 +917,11 @@ exports.updateAppreciationConfig = async (req, res) => {
   try {
     const { qrCodeUrl, alipayQrCodeUrl, wechatQrCodeUrl, enabled, description } = req.body;
     
-    const setting = await getOrCreateLabSetting();
+    let setting = await LabSetting.findOne({ where: { id: 1 } });
+    if (!setting) {
+      setting = await LabSetting.create({ id: 1 });
+    }
+    
     let config = defaultAppreciationConfig;
     if (setting.appreciation_config) {
       try {

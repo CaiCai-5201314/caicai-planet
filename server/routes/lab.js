@@ -57,12 +57,12 @@ router.get('/appreciation', (req, res) => {
   }
 });
 router.put('/appreciation', auth, adminOnly, labController.updateAppreciationConfig);
-router.post('/appreciation/upload', upload.single('file'), (req, res) => {
+router.post('/appreciation/upload', auth, upload.single('file'), async (req, res) => {
   console.log('=== DEBUG: POST /appreciation/upload called ===');
   console.log('Request file:', req.file);
   console.log('Request body:', req.body);
   try {
-    labController.uploadAppreciationImage(req, res);
+    await labController.uploadAppreciationImage(req, res);
   } catch (error) {
     console.error('Error in uploadAppreciationImage:', error);
     res.status(500).json({ success: false, message: '服务器内部错误' });

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiBell, FiMessageSquare } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
+import { useLabSettingsStore } from '../store/labSettingsStore';
 import { cn } from '../utils/cn';
 import announcementService from '../services/announcementService';
 import api from '../services/api';
@@ -15,9 +16,8 @@ const baseNavItems = [
   { label: '星际传送门', path: '/friend-links' },
 ];
 
-const authNavItems = [
+const authNavItemsBase = [
   { label: '月球', path: '/tasks' },
-  { label: '星球实验室', path: '/lab' },
   { label: '星星小卖部', path: '/shop' },
 ];
 
@@ -44,6 +44,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { labEnabled, fetchSettings } = useLabSettingsStore();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -52,6 +53,25 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    fetchSettings();
+
+    const handleSettingsUpdated = () => {
+      fetchSettings();
+    };
+
+    window.addEventListener('labSettingsUpdated', handleSettingsUpdated);
+
+    return () => {
+      window.removeEventListener('labSettingsUpdated', handleSettingsUpdated);
+    };
+  }, [fetchSettings]);
+
+  const authNavItems = [
+    ...authNavItemsBase,
+    ...(labEnabled ? [{ label: '星球实验室', path: '/lab' }] : [])
+  ];
 
   const fetchAnnouncements = useCallback(async () => {
     const token = localStorage.getItem('token');

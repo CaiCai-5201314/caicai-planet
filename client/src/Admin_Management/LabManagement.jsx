@@ -153,7 +153,7 @@ const LabManagement = () => {
       });
       
       if (response.data.success) {
-        const url = `http://localhost:3002${response.data.url}`;
+        const url = response.data.url;
         if (imageType === 'wechat') {
           setAppreciationForm(prev => ({ ...prev, wechatQrCodeUrl: url }));
         } else if (imageType === 'alipay') {
@@ -402,11 +402,30 @@ const LabManagement = () => {
     }));
   };
   
+  const handleToggleLabEnabled = async () => {
+    const newEnabled = !settingsForm.labEnabled;
+    try {
+      setIsSavingSettings(true);
+      await api.put('/lab/settings', { labEnabled: newEnabled });
+      setSettingsForm(prev => ({ ...prev, labEnabled: newEnabled }));
+      toast.success(newEnabled ? '实验室功能已开启' : '实验室功能已关闭');
+      // 触发全局状态更新
+      window.dispatchEvent(new CustomEvent('labSettingsUpdated'));
+    } catch (error) {
+      console.error('切换实验室状态失败:', error);
+      toast.error('切换失败');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const handleSaveSettings = async () => {
     try {
       setIsSavingSettings(true);
       await api.put('/lab/settings', settingsForm);
       toast.success('设置保存成功');
+      // 触发全局状态更新
+      window.dispatchEvent(new CustomEvent('labSettingsUpdated'));
     } catch (error) {
       console.error('保存设置失败:', error);
       toast.error('保存设置失败');
@@ -1366,20 +1385,35 @@ const LabManagement = () => {
         {activeTab === 'settings' && (
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">实验室设置</h2>
+            
+            {/* 实验室全局开关 */}
+            <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6 mb-6 bg-gradient-to-r from-planet-purple/5 to-transparent">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white text-lg">实验室功能总开关</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">关闭后，所有用户将无法访问实验室功能</p>
+                </div>
+                <button
+                  onClick={handleToggleLabEnabled}
+                  disabled={isSavingSettings}
+                  className={`relative inline-flex h-10 w-20 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-planet-purple ${
+                    settingsForm.labEnabled ? 'bg-planet-purple' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span className={`inline-block h-8 w-8 transform rounded-full bg-white shadow transition-transform ${
+                    settingsForm.labEnabled ? 'translate-x-10' : 'translate-x-1'
+                  }`}></span>
+                </button>
+              </div>
+              <div className="flex justify-between mt-3">
+                <span className={`text-sm font-medium ${settingsForm.labEnabled ? 'text-gray-500' : 'text-gray-400'}`}>已开启</span>
+                <span className={`text-sm font-medium ${!settingsForm.labEnabled ? 'text-gray-500' : 'text-gray-400'}`}>已关闭</span>
+              </div>
+            </div>
+            
             <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-6">
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">自定义设置</h3>
               <div className="space-y-6">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    name="labEnabled"
-                    checked={settingsForm.labEnabled}
-                    onChange={handleSettingsInputChange}
-                    className="w-4 h-4 text-planet-purple rounded focus:ring-planet-purple"
-                  />
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">实验室功能启用</label>
-                </div>
-                
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">活动最大参与人数</label>
                   <input

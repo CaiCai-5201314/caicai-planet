@@ -8,7 +8,12 @@ const friendLinkController = {
       const offset = (page - 1) * limit;
 
       const where = {};
-      if (status) where.status = status;
+      // 默认只返回已通过审核的友链，管理员可通过status参数获取其他状态
+      if (status) {
+        where.status = status;
+      } else {
+        where.status = 'approved';
+      }
       if (category) where.category = category;
 
       const { count, rows: friendLinks } = await FriendLink.findAndCountAll({

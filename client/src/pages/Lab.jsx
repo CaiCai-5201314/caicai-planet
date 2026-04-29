@@ -24,6 +24,7 @@ const Lab = () => {
   // 骰子游戏状态
   const [diceValue, setDiceValue] = useState(1);
   const [isRolling, setIsRolling] = useState(false);
+  const [isRollDisabled, setIsRollDisabled] = useState(false); // 投掷后禁用按钮
   const [difficulty, setDifficulty] = useState('medium'); // easy, medium, hard
   const [targetNumbers, setTargetNumbers] = useState([]);
   const [rollResult, setRollResult] = useState(null); // null, success, failure
@@ -39,6 +40,7 @@ const Lab = () => {
   const [diceFailureMessage, setDiceFailureMessage] = useState('很遗憾，投中了 {value} 点，目标数字是 {target}。再试一次吧！');
   // 打卡状态
   const [checkInStatus, setCheckInStatus] = useState({
+    enabled: true,
     hasCheckedIn: false,
     streak: 0,
     todayPoints: 0,
@@ -98,6 +100,7 @@ const Lab = () => {
       // 更新打卡状态
       if (checkInRes.data) {
         setCheckInStatus({
+          enabled: checkInRes.data.enabled !== false,
           hasCheckedIn: checkInRes.data.hasCheckedIn || false,
           streak: checkInRes.data.streak || 0,
           todayPoints: checkInRes.data.todayPoints || 0,
@@ -296,7 +299,7 @@ const Lab = () => {
   };
   
   const handleRollDice = async () => {
-    if (isRolling) return;
+    if (isRolling || isRollDisabled) return;
     
     // 检查是否还有未使用的骰子游戏
     if (!hasUnusedDiceGame()) {
@@ -308,6 +311,8 @@ const Lab = () => {
     
     setIsRolling(true);
     setRollResult(null);
+    // 投掷后立即禁用按钮，防止二次投掷
+    setIsRollDisabled(true);
     
     // 随机生成一个1-6的数字
     const randomValue = Math.floor(Math.random() * 6) + 1;
@@ -417,6 +422,8 @@ const Lab = () => {
         setTimeout(() => {
           setDiceUnlocked(false);
           localStorage.setItem('diceUnlocked', 'false');
+          // 恢复按钮状态，允许下次购买后再投掷
+          setIsRollDisabled(false);
         }, 3000); // 3秒后锁定，让用户有时间看到结果
       }
     }, 100);
@@ -482,16 +489,18 @@ const Lab = () => {
               >
                 常见问题
               </button>
-              <button
-                onClick={() => setActiveTab('checkin')}
-                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
-                  activeTab === 'checkin'
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                每日打卡
-              </button>
+              {checkInStatus.enabled && (
+                <button
+                  onClick={() => setActiveTab('checkin')}
+                  className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                    activeTab === 'checkin'
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  每日打卡
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('appreciation')}
                 className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
@@ -684,7 +693,7 @@ const Lab = () => {
               </div>
             )}
             
-            {activeTab === 'checkin' && (
+            {activeTab === 'checkin' && checkInStatus.enabled && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                   <FiCheckCircle className="w-6 h-6 text-planet-purple" />
@@ -897,8 +906,8 @@ const Lab = () => {
                     <div className="mb-8">
                       <button
                         onClick={handleRollDice}
-                        disabled={isRolling}
-                        className={`w-32 h-32 rounded-2xl bg-white dark:bg-gray-700 border-4 border-planet-purple flex items-center justify-center text-6xl font-bold transition-all duration-300 ${isRolling ? 'animate-spin' : 'hover:scale-105'}`}
+                        disabled={isRolling || isRollDisabled}
+                        className={`w-32 h-32 rounded-2xl bg-white dark:bg-gray-700 border-4 border-planet-purple flex items-center justify-center text-6xl font-bold transition-all duration-300 ${isRolling ? 'animate-spin' : isRollDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
                       >
                         {diceValue}
                       </button>
@@ -906,10 +915,10 @@ const Lab = () => {
                     
                     <button
                       onClick={handleRollDice}
-                      disabled={isRolling}
+                      disabled={isRolling || isRollDisabled}
                       className={`px-8 py-3 bg-planet-purple text-white rounded-lg font-medium hover:bg-planet-purple/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {isRolling ? '投掷中...' : '投掷骰子'}
+                      {isRolling ? '投掷中...' : isRollDisabled ? '等待结算...' : '投掷骰子'}
                     </button>
                     
                     <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">

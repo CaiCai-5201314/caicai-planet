@@ -22,7 +22,13 @@ module.exports = {
     dialectOptions: {
       charset: 'utf8mb4',
       dateStrings: true,
-      typeCast: true
+      typeCast: true,
+      supportBigNumbers: true,
+      bigNumberStrings: true
+    },
+    define: {
+      charset: 'utf8mb4',
+      collate: 'utf8mb4_unicode_ci'
     }
   },
   production: {
@@ -43,7 +49,13 @@ module.exports = {
     dialectOptions: {
       charset: 'utf8mb4',
       dateStrings: true,
-      typeCast: true
+      typeCast: true,
+      supportBigNumbers: true,
+      bigNumberStrings: true
+    },
+    define: {
+      charset: 'utf8mb4',
+      collate: 'utf8mb4_unicode_ci'
     }
   }
 };
