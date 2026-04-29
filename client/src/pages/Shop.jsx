@@ -21,6 +21,28 @@ const Shop = () => {
     }
   }, [isAuthenticated]);
 
+  // 当切换到需要购买记录的标签时，获取购买记录
+  useEffect(() => {
+    if (isAuthenticated && (activeTab === 'my-items' || activeTab === 'records')) {
+      fetchPurchaseRecords();
+    }
+  }, [isAuthenticated, activeTab]);
+
+  // 监听购买记录更新事件（来自骰子游戏投掷完成）
+  useEffect(() => {
+    const handleRecordsUpdated = () => {
+      if (activeTab === 'my-items' || activeTab === 'records') {
+        fetchPurchaseRecords();
+      }
+    };
+    
+    window.addEventListener('purchaseRecordsUpdated', handleRecordsUpdated);
+    
+    return () => {
+      window.removeEventListener('purchaseRecordsUpdated', handleRecordsUpdated);
+    };
+  }, [activeTab]);
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -75,14 +97,13 @@ const Shop = () => {
       
       // 检查是否购买的是骰子游戏解锁券
       if (product.name === '骰子游戏' || product.category === 'dice') {
-        // 解锁骰子游戏（不立即标记为已使用）
-        localStorage.setItem('diceUnlocked', 'true');
-        toast.success('骰子游戏已解锁，可以前往星球实验室使用！');
-        // 不立即标记为已使用，等待用户实际投掷后再标记
-      } else {
-        // 重新获取购买记录，确保localStorage中的记录是最新的
-        await fetchPurchaseRecords();
+        // 购买后不立即设置解锁状态，让用户在实验室页面从后端获取状态
+        // 这样确保状态的一致性
+        toast.success('骰子游戏已购买，请前往星球实验室使用！');
       }
+      
+      // 重新获取购买记录，确保localStorage中的记录是最新的
+      await fetchPurchaseRecords();
     } catch (error) {
       console.error('购买失败:', error);
       toast.error('购买失败');
@@ -151,28 +172,22 @@ const Shop = () => {
           {/* 标签栏 */}
           <div className="flex flex-wrap gap-2 mb-8">
             <button
-              onClick={() => {
-                setActiveTab('products');
-                fetchProducts();
-              }}
+              type="button"
+              onClick={() => setActiveTab('products')}
               className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'products' ? 'bg-planet-purple text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
             >
               商品列表
             </button>
             <button
-              onClick={() => {
-                setActiveTab('records');
-                fetchPurchaseRecords();
-              }}
+              type="button"
+              onClick={() => setActiveTab('records')}
               className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'records' ? 'bg-planet-purple text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
             >
               购买记录
             </button>
             <button
-              onClick={() => {
-                setActiveTab('my-items');
-                fetchPurchaseRecords();
-              }}
+              type="button"
+              onClick={() => setActiveTab('my-items')}
               className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'my-items' ? 'bg-planet-purple text-white' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
             >
               我的物品
@@ -213,6 +228,7 @@ const Shop = () => {
                         </span>
                       </div>
                       <button
+                        type="button"
                         onClick={() => handlePurchase(product)}
                         disabled={purchasing || product.stock <= 0 || user.moon_points < product.price}
                         className={cn(
@@ -287,46 +303,17 @@ const Shop = () => {
                   </div>
                 ) : (
                   purchaseRecords.map((record) => {
-                    // 从localStorage获取物品使用状态
+                    // 优先使用后端返回的使用状态，如果没有则回退到localStorage
                     const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
-                    const isUsed = usedItems[record.id] || false;
-                    
-                    const handleUseItem = (record) => {
-                      if (isUsed) return;
-                      
-                      // 检查是否是骰子游戏
-                      if (record.product_name === '骰子游戏') {
-                        // 解锁骰子游戏
-                        localStorage.setItem('diceUnlocked', 'true');
-                        toast.success('骰子游戏已解锁！');
-                      }
-                      
-                      // 标记物品已使用
-                      const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
-                      usedItems[record.id] = true;
-                      localStorage.setItem('usedItems', JSON.stringify(usedItems));
-                      
-                      // 刷新购买记录显示
-                      fetchPurchaseRecords();
-                    };
+                    const isUsed = record.used !== undefined ? record.used : (usedItems[record.id] || false);
                     
                     return (
                       <div key={record.id} className="px-6 py-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-gray-900 dark:text-white">{record.product_name}</h4>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded-full text-sm ${isUsed ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
-                              {isUsed ? '已使用' : '未使用'}
-                            </span>
-                            {!isUsed && (
-                              <button
-                                onClick={() => handleUseItem(record)}
-                                className="px-3 py-1 text-sm bg-planet-purple text-white rounded-full hover:bg-planet-purple-dark transition-colors"
-                              >
-                                使用
-                              </button>
-                            )}
-                          </div>
+                          <span className={`px-2 py-1 rounded-full text-sm ${isUsed ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
+                            {isUsed ? '已使用' : '未使用'}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
                           <span>购买时间: {new Date(record.purchased_at).toLocaleString()}</span>

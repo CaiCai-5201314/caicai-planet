@@ -234,17 +234,37 @@ exports.purchaseProduct = async (req, res) => {
   }
 };
 
-// 获取用户购买记录
+// 获取用户购买记录（包含使用状态）
 exports.getUserPurchaseRecords = async (req, res) => {
   try {
     const user_id = req.user.id;
     
     const records = await PurchaseRecord.findAll({
       where: { user_id },
-      order: [['purchased_at', 'DESC']]
+      order: [['purchased_at', 'DESC']],
+      attributes: ['id', 'product_id', 'product_name', 'price', 'status', 'purchased_at']
     });
     
-    res.status(200).json({ success: true, records });
+    // 查询已使用的骰子记录
+    const { DiceUsage } = require('../models');
+    let usedPurchaseIds = [];
+    try {
+      const usages = await DiceUsage.findAll({
+        where: { user_id },
+        attributes: ['purchase_record_id']
+      });
+      usedPurchaseIds = usages.map(u => u.purchase_record_id);
+    } catch (e) {
+      console.warn('DiceUsage表可能不存在:', e.message);
+    }
+    
+    // 添加使用状态到每条记录
+    const recordsWithUsedStatus = records.map(record => ({
+      ...record.toJSON(),
+      used: usedPurchaseIds.includes(record.id)
+    }));
+    
+    res.status(200).json({ success: true, records: recordsWithUsedStatus });
   } catch (error) {
     console.error('获取购买记录失败:', error);
     res.status(500).json({ success: false, message: '获取购买记录失败' });

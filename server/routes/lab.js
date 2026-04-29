@@ -40,6 +40,7 @@ router.put('/settings', auth, adminOnly, labController.updateSettings);
 router.post('/dice/records', auth, labController.saveDiceRecord);
 router.get('/dice/records', auth, adminOnly, labController.getDiceRecords);
 router.get('/dice/unlock-status', auth, labController.getDiceUnlockStatus);
+router.post('/dice/mark-used', auth, labController.markItemUsed);
 
 // 打卡相关路由
 router.get('/checkin', auth, labController.getCheckInStatus);

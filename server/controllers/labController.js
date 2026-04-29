@@ -547,39 +547,99 @@ exports.getDiceUnlockStatus = async (req, res) => {
   try {
     const user_id = req.user.id;
     
-    const { PurchaseRecord } = require('../models');
+    const { PurchaseRecord, DiceUsage } = require('../models');
+    const Op = require('sequelize').Op;
     
     // 查询所有购买的骰子游戏记录
+    // 使用product_id=1来识别骰子游戏（更可靠，不受乱码影响）
     const dicePurchases = await PurchaseRecord.findAll({
       where: {
         user_id,
         status: 'completed',
-        [require('sequelize').Op.or]: [
-          { product_name: { [require('sequelize').Op.like]: '%骰子%' } },
-          { product_name: { [require('sequelize').Op.like]: '%Dice%' } },
-          { product_name: { [require('sequelize').Op.like]: '%游戏%' } }
-        ]
+        product_id: 1 // 骰子游戏的商品ID
       },
-      order: [['purchased_at', 'DESC']]
+      order: [['purchased_at', 'DESC']],
+      attributes: ['id', 'product_id', 'product_name', 'purchased_at', 'price']
     });
     
-    // 返回所有购买记录，让前端判断是否有未使用的
+    // 查询已使用的骰子记录
+    const usedPurchaseIds = [];
+    try {
+      const usages = await DiceUsage.findAll({
+        where: { user_id },
+        attributes: ['purchase_record_id']
+      });
+      usages.forEach(u => usedPurchaseIds.push(u.purchase_record_id));
+    } catch (e) {
+      console.warn('DiceUsage表可能不存在:', e.message);
+    }
+    
+    // 检查是否有未使用的骰子
+    const hasUnused = dicePurchases.some(p => !usedPurchaseIds.includes(p.id));
+    
+    // 返回所有购买记录（包含使用状态）
     const purchases = dicePurchases.map(p => ({
       id: p.id,
       product_name: p.product_name,
       purchased_at: p.purchased_at,
-      price: p.price
+      price: p.price,
+      used: usedPurchaseIds.includes(p.id)
     }));
     
     res.status(200).json({ 
       success: true, 
-      unlocked: dicePurchases.length > 0,
+      unlocked: hasUnused,
       hasPurchases: dicePurchases.length > 0,
+      hasUnused,
       purchases
     });
   } catch (error) {
     console.error('检查骰子解锁状态失败:', error);
     res.status(500).json({ success: false, message: '检查骰子解锁状态失败' });
+  }
+};
+
+// 标记物品为已使用
+exports.markItemUsed = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const { purchase_id } = req.body;
+    
+    const { PurchaseRecord, DiceUsage } = require('../models');
+    
+    const purchase = await PurchaseRecord.findOne({
+      where: {
+        id: purchase_id,
+        user_id,
+        status: 'completed'
+      },
+      attributes: ['id', 'user_id', 'product_id', 'product_name', 'price', 'status', 'purchased_at']
+    });
+    
+    if (!purchase) {
+      return res.status(404).json({ success: false, message: '购买记录不存在' });
+    }
+    
+    // 使用DiceUsage表记录使用状态（独立于PurchaseRecord表）
+    // 使用findOrCreate避免重复插入
+    try {
+      await DiceUsage.findOrCreate({
+        where: {
+          user_id,
+          purchase_record_id: purchase_id
+        },
+        defaults: {
+          used_at: new Date()
+        }
+      });
+    } catch (e) {
+      console.warn('DiceUsage表可能不存在:', e.message);
+    }
+    
+    res.status(200).json({ success: true, message: '物品已标记为已使用' });
+  } catch (error) {
+    console.error('标记物品使用失败:', error);
+    res.status(500).json({ success: false, message: '标记物品使用失败' });
   }
 };
 

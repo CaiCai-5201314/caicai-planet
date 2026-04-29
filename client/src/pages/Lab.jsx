@@ -112,36 +112,42 @@ const Lab = () => {
       
       // 检查骰子解锁状态（从后端获取，优先级高于localStorage）
       if (diceUnlockRes.data && diceUnlockRes.data.success) {
-        // 保存后端返回的购买记录
-        if (diceUnlockRes.data.purchases && diceUnlockRes.data.purchases.length > 0) {
+        // 保存后端返回的购买记录（包含使用状态）
+        const backendPurchases = diceUnlockRes.data.purchases || [];
+        if (backendPurchases.length > 0) {
           const allRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
           // 合并后端记录到本地存储
-          diceUnlockRes.data.purchases.forEach(purchase => {
-            const exists = allRecords.find(r => r.id === purchase.id);
-            if (!exists) {
+          backendPurchases.forEach(purchase => {
+            const existingIndex = allRecords.findIndex(r => r.id === purchase.id);
+            if (existingIndex >= 0) {
+              // 更新现有记录的使用状态
+              allRecords[existingIndex].used = purchase.used;
+            } else {
               allRecords.push(purchase);
             }
           });
           localStorage.setItem('purchaseRecords', JSON.stringify(allRecords));
-        }
-        
-        let unlocked = diceUnlockRes.data.unlocked;
-        
-        // 如果后端显示已解锁，再检查是否还有未使用的骰子游戏
-        if (unlocked) {
-          const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
-          const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
-          const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
-          const hasUnused = diceRecords.some(record => !usedItems[record.id]);
           
-          if (!hasUnused && diceRecords.length > 0) {
-            // 所有骰子游戏都已使用，自动锁定
-            unlocked = false;
-          }
+          // 更新localStorage中的usedItems
+          const usedItems = {};
+          backendPurchases.forEach(purchase => {
+            if (purchase.used) {
+              usedItems[purchase.id] = true;
+            }
+          });
+          localStorage.setItem('usedItems', JSON.stringify(usedItems));
         }
         
-        setDiceUnlocked(unlocked);
-        localStorage.setItem('diceUnlocked', String(unlocked));
+        // 关键修复：必须使用后端返回的hasUnused状态，不能依赖localStorage
+        // 刷新页面时必须重新检查权限，没有未使用的骰子则显示锁定
+        const hasUnused = diceUnlockRes.data.hasUnused || false;
+        
+        setDiceUnlocked(hasUnused);
+        localStorage.setItem('diceUnlocked', String(hasUnused));
+      } else {
+        // 如果后端请求失败，默认显示锁定
+        setDiceUnlocked(false);
+        localStorage.setItem('diceUnlocked', 'false');
       }
       
       // 检查新活动并显示通知
@@ -284,7 +290,8 @@ const Lab = () => {
   const hasUnusedDiceGame = () => {
     const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
     const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
-    const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
+    // 使用product_id=1来识别骰子游戏（更可靠）
+    const diceRecords = purchaseRecords.filter(record => record.product_id === 1 || record.product_name?.includes('骰子'));
     return diceRecords.some(record => !usedItems[record.id]);
   };
   
@@ -356,29 +363,61 @@ const Lab = () => {
           toast.error(failureMessage);
         }
         
-        // 标记最近一次购买的骰子游戏为已使用
-        const markAsUsed = () => {
+        // 标记最近一次购买的骰子游戏为已使用（同步到后端）
+        const markAsUsed = async () => {
           // 获取购买记录
           const purchaseRecords = JSON.parse(localStorage.getItem('purchaseRecords') || '[]');
-          // 找到最近一次购买的骰子游戏
-          const diceRecords = purchaseRecords.filter(record => record.product_name === '骰子游戏');
+          // 获取已使用的物品列表
+          const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+          
+          // 找到最近一次购买的未使用的骰子游戏
+          // 检查两种状态：record.used 字段 和 usedItems 中的记录
+          // 使用product_id=1来识别骰子游戏（更可靠，不受乱码影响）
+          const diceRecords = purchaseRecords.filter(record => {
+            const isDiceProduct = record.product_id === 1 || 
+                                record.product_name?.includes('骰子') || 
+                                record.product_name?.includes('Dice') || 
+                                record.product_name?.includes('dice');
+            return isDiceProduct && !record.used && !usedItems[record.id];
+          });
+          
           if (diceRecords.length > 0) {
-            // 按购买时间排序，找到最新的
+            // 按购买时间排序，找到最新的未使用的
             const latestRecord = diceRecords.sort((a, b) => new Date(b.purchased_at) - new Date(a.purchased_at))[0];
-            // 更新使用状态
-            const usedItems = JSON.parse(localStorage.getItem('usedItems') || '{}');
+            
+            // 更新本地使用状态
             usedItems[latestRecord.id] = true;
             localStorage.setItem('usedItems', JSON.stringify(usedItems));
+            
+            // 更新本地购买记录中的使用状态
+            const updatedRecords = purchaseRecords.map(r => 
+              r.id === latestRecord.id ? { ...r, used: true } : r
+            );
+            localStorage.setItem('purchaseRecords', JSON.stringify(updatedRecords));
+            
+            // 调用后端 API 标记为已使用
+            try {
+              await api.post('/lab/dice/mark-used', { purchase_id: latestRecord.id });
+              // 触发购买记录更新事件，通知其他页面刷新
+              window.dispatchEvent(new CustomEvent('purchaseRecordsUpdated'));
+            } catch (error) {
+              console.error('标记物品为已使用失败:', error);
+            }
           }
         };
         
+        // 调用标记使用函数
         markAsUsed();
         
-        // 延迟锁定骰子游戏，让用户有时间看到结果
+        // 触发事件通知其他页面更新数据
+        window.dispatchEvent(new CustomEvent('purchaseRecordsUpdated'));
+        
+        // 立即更新状态，不允许再次投掷
+        // 刷新页面时会从后端重新检查权限，确保状态正确
         setTimeout(() => {
           setDiceUnlocked(false);
           localStorage.setItem('diceUnlocked', 'false');
-        }, 3000); // 3秒后锁定
+        }, 3000); // 3秒后锁定，让用户有时间看到结果
       }
     }, 100);
   };
