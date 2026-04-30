@@ -5,7 +5,7 @@ import {
   FiTrendingUp, FiActivity, FiCalendar, FiMoreVertical, FiEdit2,
   FiLock, FiUnlock, FiVolumeX, FiVolume2, FiSend, FiX, FiTrash2,
   FiCamera, FiSave, FiCheck, FiAlertCircle, FiSettings, FiShield, FiAlertTriangle,
-  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar, FiMenu
+  FiTarget, FiLayers, FiChevronLeft, FiChevronRight, FiMoon, FiStar, FiMenu, FiGift
 } from 'react-icons/fi';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
@@ -26,6 +26,8 @@ import MoonPointRuleManagement from './MoonPointRuleManagement';
 import ExpManagement from './ExpManagement';
 import LabManagement from './LabManagement';
 import ShopManagement from './ShopManagement';
+import CDKManagement from './CDKManagement';
+import FileStorageManagement from './FileStorageManagement';
 
 // 星际传送门管理组件
 function FriendLinkManagement() {
@@ -1910,6 +1912,8 @@ function AdminLayout({ children }) {
       { path: '/admin-caicai0304/advertisements', icon: FiTarget, label: '广告位管理', permission: 'siteConfig' },
       { path: '/admin-caicai0304/error-logs', icon: FiAlertCircle, label: '错误日志管理', permission: 'errorLogManagement' },
       { path: '/admin-caicai0304/lab', icon: FiSettings, label: '星球实验室管理', permission: 'labManagement' },
+      { path: '/admin-caicai0304/cdk', icon: FiGift, label: 'CDK兑换码管理', permission: 'cdkManagement' },
+      { path: '/admin-caicai0304/file-storage', icon: FiSave, label: '文件存储管理', permission: 'fileStorageManagement' },
       { path: '/admin-caicai0304/shop', icon: FiStar, label: '星星小卖部管理', permission: 'shopManagement' },
     ];
 
@@ -3662,6 +3666,8 @@ export default function AdminDashboard() {
         <Route path="/error-logs" element={<ProtectedRoute requiredPermission="errorLogManagement"><ErrorLogManagement /></ProtectedRoute>} />
         <Route path="/lab" element={<ProtectedRoute requiredPermission="labManagement"><LabManagement /></ProtectedRoute>} />
         <Route path="/shop" element={<ProtectedRoute requiredPermission="shopManagement"><ShopManagement /></ProtectedRoute>} />
+        <Route path="/cdk" element={<ProtectedRoute requiredPermission="cdkManagement"><CDKManagement /></ProtectedRoute>} />
+        <Route path="/file-storage" element={<ProtectedRoute requiredPermission="fileStorageManagement"><FileStorageManagement /></ProtectedRoute>} />
       </Routes>
     </AdminLayout>
   );

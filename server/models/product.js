@@ -52,6 +52,17 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'active'
     },
+    cdk_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: '关联的CDK ID'
+    },
+    cdk_reward_type: {
+      type: DataTypes.ENUM('direct', 'on_purchase'),
+      allowNull: true,
+      defaultValue: 'on_purchase',
+      comment: 'CDK奖励发放方式：直接发放/购买后发放'
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -72,6 +83,10 @@ module.exports = (sequelize) => {
       }
     }
   });
+
+  Product.associate = (models) => {
+    Product.belongsTo(models.CDK, { foreignKey: 'cdk_id', as: 'cdk', constraints: false });
+  };
 
   return Product;
 };

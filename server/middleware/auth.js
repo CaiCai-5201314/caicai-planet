@@ -5,26 +5,40 @@ const JWT_SECRET = process.env.JWT_SECRET || 'caicai_planet_secret_key_2024';
 
 const auth = async (req, res, next) => {
   try {
+    console.log('=== Auth Middleware Called ===');
+    console.log('Path:', req.path);
+    console.log('Method:', req.method);
+    
     // 从Authorization头或cookie中获取token
     let token = req.headers.authorization?.split(' ')[1];
+    
+    console.log('Authorization token exists:', !!token);
     
     // 如果Authorization头中没有token，尝试从cookie中获取
     if (!token) {
       token = req.cookies?.token;
+      console.log('Cookie token exists:', !!token);
     }
     
     if (!token) {
+      console.log('No token provided, returning 401');
       return res.status(401).json({ message: '未提供认证令牌' });
     }
 
+    console.log('Token found, verifying...');
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Token decoded:', decoded);
+    
     const user = await User.findByPk(decoded.id, {
       attributes: { exclude: ['password'] }
     });
 
     if (!user) {
+      console.log('User not found, returning 401');
       return res.status(401).json({ message: '用户不存在' });
     }
+
+    console.log('User found:', user.id, user.username, user.role);
 
     if (user.status === 'banned') {
       return res.status(403).json({ message: '账号已被封禁' });
@@ -51,8 +65,13 @@ const auth = async (req, res, next) => {
     }
 
     req.user = userData;
+    console.log('Auth successful, user:', userData.id, userData.username, userData.role);
     next();
   } catch (error) {
+    console.error('=== Auth Error ===');
+    console.error('Error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ message: '令牌已过期' });
     }

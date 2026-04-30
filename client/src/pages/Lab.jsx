@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { FiSettings, FiCalendar, FiAward, FiUser, FiHelpCircle, FiCheckCircle, FiCoffee } from 'react-icons/fi';
 import Navbar from '../components/Navbar';
+import CDKExchange from '../components/CDKExchange';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -29,11 +30,7 @@ const Lab = () => {
   const [targetNumbers, setTargetNumbers] = useState([]);
   const [rollResult, setRollResult] = useState(null); // null, success, failure
   // 骰子游戏解锁状态
-  const [diceUnlocked, setDiceUnlocked] = useState(() => {
-    // 从localStorage中读取解锁状态
-    const storedUnlocked = localStorage.getItem('diceUnlocked');
-    return storedUnlocked === 'true';
-  });
+  const [diceUnlocked, setDiceUnlocked] = useState(false); // 默认锁定状态，由后端决定是否解锁
   // 骰子游戏设置
   const [diceEnabled, setDiceEnabled] = useState(true);
   const [diceSuccessMessage, setDiceSuccessMessage] = useState('恭喜你！投中了 {value} 点，允许做你想做的事情！');
@@ -512,20 +509,30 @@ const Lab = () => {
                 赞赏支持
               </button>
               <button
-                onClick={() => setActiveTab('dice')}
-                className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
-                  activeTab === 'dice'
-                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                骰子游戏
-              </button>
-            </div>
+              onClick={() => setActiveTab('dice')}
+              className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'dice'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              骰子游戏
+            </button>
+            <button
+              onClick={() => setActiveTab('cdk')}
+              className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
+                activeTab === 'cdk'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              CDK兑换
+            </button>
           </div>
+        </div>
 
-          {/* 内容区域 */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        {/* 内容区域 */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
             {activeTab === 'events' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
@@ -927,6 +934,10 @@ const Lab = () => {
                   </div>
                 )}
               </div>
+            )}
+
+            {activeTab === 'cdk' && (
+              <CDKExchange />
             )}
 
             {/* 活动详情弹窗 */}

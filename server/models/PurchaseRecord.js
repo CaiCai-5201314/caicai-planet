@@ -21,9 +21,14 @@ module.exports = (sequelize, DataTypes) => {
       comment: '商品名称'
     },
     price: {
-      type: DataTypes.DECIMAL(10, 2),
+      type: DataTypes.DECIMAL(10, 1),
       allowNull: false,
       comment: '购买价格'
+    },
+    cdk_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: '关联的CDK ID'
     },
     status: {
       type: DataTypes.ENUM('completed', 'cancelled'),
@@ -41,6 +46,7 @@ module.exports = (sequelize, DataTypes) => {
   PurchaseRecord.associate = (models) => {
     PurchaseRecord.belongsTo(models.User, { foreignKey: 'user_id', as: 'user', constraints: false });
     PurchaseRecord.belongsTo(models.Product, { foreignKey: 'product_id', as: 'product', constraints: false });
+    PurchaseRecord.belongsTo(models.CDK, { foreignKey: 'cdk_id', as: 'cdk', constraints: false });
   };
 
   return PurchaseRecord;

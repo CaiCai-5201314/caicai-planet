@@ -324,7 +324,7 @@ class ErrorTracker {
     try {
       // 批量发送错误
       for (const error of errorsToSend) {
-        await api.post('/api/error/log', error);
+        await api.post('/error/log', error);
       }
     } catch (error) {
       // 如果发送失败，将错误重新加入队列（如果队列还没满）

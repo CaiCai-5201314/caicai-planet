@@ -137,6 +137,28 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/friend-links', friendLinkRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/tags', tagRoutes);
+
+
+// 文件存储路由
+console.log('Loading file storage routes...');
+try {
+  const fileStorageRoutes = require('./routes/fileStorage');
+  console.log('File storage routes loaded successfully!');
+  app.use('/api/file-storage', fileStorageRoutes);
+} catch (error) {
+  console.error('Error loading file storage routes:', error);
+}
+
+// 池路由
+console.log('Loading pool routes...');
+try {
+  const poolRoutes = require('./routes/pool');
+  console.log('Pool routes loaded successfully!');
+  app.use('/api/pools', poolRoutes);
+} catch (error) {
+  console.error('Error loading pool routes:', error);
+}
+
 // 公告路由
 app.use('/api', announcementRoutes);
 app.use('/api/admin', logOperation, adminRoutes);
@@ -209,6 +231,23 @@ try {
   app.use('/api/lab', labRoutes);
 } catch (error) {
   console.error('Error loading lab routes:', error);
+}
+
+// CDK路由
+console.log('====================================');
+console.log('Loading CDK routes...');
+try {
+  const cdkRoutes = require('./routes/cdk');
+  console.log('CDK routes module loaded successfully');
+  console.log('CDK routes object:', typeof cdkRoutes);
+  app.use('/api/cdk', cdkRoutes);
+  console.log('CDK routes registered at /api/cdk');
+  console.log('====================================');
+} catch (error) {
+  console.error('====================================');
+  console.error('Error loading CDK routes:', error);
+  console.error('Error stack:', error.stack);
+  console.error('====================================');
 }
 
 // 赞赏码上传路由（直接注册，确保优先匹配）
@@ -821,6 +860,18 @@ const startServer = async () => {
       await db.sequelize.query("ALTER TABLE user_tasks ADD COLUMN moon_point_request_id INT");
     } catch (error) {
       console.log('moon_point_request_id字段已存在');
+    }
+
+    // 为CDK表添加池相关字段
+    try {
+      await db.sequelize.query("ALTER TABLE cdks ADD COLUMN pool_type ENUM('fixed', 'random')");
+    } catch (error) {
+      console.log('pool_type字段已存在');
+    }
+    try {
+      await db.sequelize.query("ALTER TABLE cdks ADD COLUMN pool_id INT");
+    } catch (error) {
+      console.log('pool_id字段已存在');
     }
 
     console.log('数据库模型同步完成');

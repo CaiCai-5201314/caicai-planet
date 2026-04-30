@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 const ShopManagement = () => {
   const [products, setProducts] = useState([]);
+  const [cdkList, setCdkList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -15,14 +16,23 @@ const ShopManagement = () => {
     price: 0,
     stock: 0,
     icon: '',
-    category: 'general'
+    category: 'general',
+    cdk_id: null,
+    cdk_reward_type: 'on_purchase'
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
 
   useEffect(() => {
     fetchProducts();
+    fetchCdkList();
   }, [searchTerm, categoryFilter]);
+
+  useEffect(() => {
+    if (showAddModal || showEditModal) {
+      fetchCdkList();
+    }
+  }, [showAddModal, showEditModal]);
 
   const fetchProducts = async () => {
     try {
@@ -44,6 +54,15 @@ const ShopManagement = () => {
     }
   };
 
+  const fetchCdkList = async () => {
+    try {
+      const response = await api.get('/cdk');
+      setCdkList(response.data?.data || []);
+    } catch (error) {
+      console.error('获取CDK列表失败:', error);
+    }
+  };
+
   const handleAddProduct = async () => {
     if (!newProduct.name.trim() || !newProduct.description.trim() || newProduct.price <= 0 || newProduct.stock < 0) {
       toast.error('请填写完整的商品信息');
@@ -60,7 +79,9 @@ const ShopManagement = () => {
         price: 0,
         stock: 0,
         icon: '',
-        category: 'general'
+        category: 'general',
+        cdk_id: null,
+        cdk_reward_type: 'on_purchase'
       });
       fetchProducts();
     } catch (error) {
@@ -121,7 +142,11 @@ const ShopManagement = () => {
     { value: 'other', label: '其他' }
   ];
 
-  // 图标库
+  const cdkRewardTypeOptions = [
+    { value: 'on_purchase', label: '购买后发放' },
+    { value: 'direct', label: '直接发放' }
+  ];
+
   const emojiIcons = [
     '🎁', '🎯', '⭐', '🔥', '💎', '✨', '💝', '🎨', '📦', '🔮',
     '🎉', '🎊', '🎈', '🎂', '🎃', '🎄', '🎋', '🎍', '🎎', '🎏',
@@ -130,9 +155,8 @@ const ShopManagement = () => {
     '🎶', '🎵', '🎯', '🎱', '🎲', '🎰', '🎳', '🎴', '🎵', '🎶'
   ];
   
-  // 状态管理
   const [showIconPicker, setShowIconPicker] = useState(false);
-  const [iconPickerType, setIconPickerType] = useState('new'); // 'new' or 'edit'
+  const [iconPickerType, setIconPickerType] = useState('new');
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)] space-y-6">
@@ -204,6 +228,11 @@ const ShopManagement = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs ${product.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                           {product.status === 'active' ? '显示' : '隐藏'}
                         </span>
+                        {product.cdk_id && (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs">
+                            关联CDK
+                          </span>
+                        )}
                       </div>
                       <p className="text-gray-600 text-sm mt-1">{product.description}</p>
                       <div className="flex items-center space-x-4 mt-2">
@@ -211,6 +240,11 @@ const ShopManagement = () => {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           库存: {product.stock}
                         </span>
+                        {product.cdk_id && product.cdk && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs">
+                            CDK: {product.cdk.code}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -250,7 +284,7 @@ const ShopManagement = () => {
       {/* 添加商品模态框 */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-4">添加商品</h3>
             <div className="space-y-4">
               <div>
@@ -333,6 +367,37 @@ const ShopManagement = () => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">关联CDK (可选)</label>
+                <select
+                  value={newProduct.cdk_id || ''}
+                  onChange={(e) => setNewProduct({ ...newProduct, cdk_id: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                >
+                  <option value="">不关联CDK</option>
+                  {cdkList.filter(cdk => cdk.status === 'active').map((cdk) => (
+                    <option key={cdk.id} value={cdk.id}>
+                      {cdk.code} - {cdk.description || '无描述'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {newProduct.cdk_id && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CDK发放方式</label>
+                  <select
+                    value={newProduct.cdk_reward_type}
+                    onChange={(e) => setNewProduct({ ...newProduct, cdk_reward_type: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  >
+                    {cdkRewardTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   onClick={() => setShowAddModal(false)}
@@ -355,7 +420,7 @@ const ShopManagement = () => {
       {/* 编辑商品模态框 */}
       {showEditModal && currentProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-4">编辑商品</h3>
             <div className="space-y-4">
               <div>
@@ -438,6 +503,37 @@ const ShopManagement = () => {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">关联CDK (可选)</label>
+                <select
+                  value={currentProduct.cdk_id || ''}
+                  onChange={(e) => setCurrentProduct({ ...currentProduct, cdk_id: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                >
+                  <option value="">不关联CDK</option>
+                  {cdkList.filter(cdk => cdk.status === 'active').map((cdk) => (
+                    <option key={cdk.id} value={cdk.id}>
+                      {cdk.code} - {cdk.description || '无描述'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {currentProduct.cdk_id && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">CDK发放方式</label>
+                  <select
+                    value={currentProduct.cdk_reward_type}
+                    onChange={(e) => setCurrentProduct({ ...currentProduct, cdk_reward_type: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-planet-purple"
+                  >
+                    {cdkRewardTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   onClick={() => setShowEditModal(false)}
