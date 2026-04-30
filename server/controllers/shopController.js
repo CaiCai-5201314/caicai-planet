@@ -377,17 +377,25 @@ exports.purchaseProduct = async (req, res) => {
     };
 
     if (product.cdk_id) {
-      const cdk = await CDK.findByPk(product.cdk_id);
-      if (cdk) {
-        response.cdk = {
-          id: cdk.id,
-          code: cdk.code,
-          description: cdk.description,
-          type: cdk.type
-        };
+      try {
+        const cdk = await CDK.findByPk(product.cdk_id);
+        console.log('查询到的CDK:', cdk?.toJSON());
+        if (cdk) {
+          response.cdk = {
+            id: cdk.id,
+            code: cdk.code,
+            description: cdk.description,
+            type: cdk.type
+          };
+        } else {
+          console.warn(`未找到CDK，cdk_id: ${product.cdk_id}`);
+        }
+      } catch (cdkError) {
+        console.error('查询CDK失败:', cdkError);
       }
     }
 
+    console.log('购买响应:', response);
     res.status(200).json(response);
   } catch (error) {
     console.error('购买商品失败:', error);
